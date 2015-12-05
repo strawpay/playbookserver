@@ -1,7 +1,5 @@
 name := "playbookserver"
 
-version := "1.0"
-
 lazy val playbookserver = (project in file(".")).
   enablePlugins(PlayScala, GitVersioning, GitBranchPrompt)
 
@@ -30,6 +28,8 @@ buildInfoKeys := Seq[BuildInfoKey](
   scalaVersion,
   sbtVersion
 )
+
+git.useGitDescribe := true
 
 versionFile := {
   val file = target.value / "version.txt"
