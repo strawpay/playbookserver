@@ -1,0 +1,7 @@
+#!/bin/bash
+
+if [[ $* == *"failure"* ]]; then
+   exit 1;
+fi
+echo $*
+
