@@ -29,7 +29,7 @@ The data is json encoded extra-vars:
 <code>
 { 
     "variable1" : "value",
-    "variable1" : "value"
+    "variable2" : "value"
 }
 </code>
 
