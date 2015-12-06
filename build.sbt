@@ -1,6 +1,6 @@
-name := "playbookserver"
+name := "rocannon"
 
-lazy val playbookserver = (project in file(".")).
+lazy val rocannon = (project in file(".")).
   enablePlugins(PlayScala, GitVersioning, GitBranchPrompt)
 
 scalaVersion := "2.11.7"

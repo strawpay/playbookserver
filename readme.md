@@ -1,7 +1,7 @@
-# Playbook Server
+# Rocannon a Playbook Server
 
 This is a simple http server that runs ansible-playbooks
-Its based on Play framework
+It is based on the Play framework.
 
 ## Running
 Run as a normal Play app or as a docker image:
@@ -16,11 +16,11 @@ or
 
 > sbt docker:publishLocal
 >
-> docker run -d -v [path-to-playbooks]:/playbooks playbookserver
+> docker run -d -v [path-to-playbooks]:/playbooks rocannon
 
 ## Accessing
 
-Use http POST to http://playbookserver/inventory-file/playbook-file
+Use http POST to http://rocannon/inventory-file/playbook-file
 
 Where inventory-file and playbook-file may be relative to the playbook directory.
 
@@ -33,7 +33,7 @@ The data is json encoded extra-vars:
 }
 </code>
 
-Make sure to use <code>Content-Type:application/json</code>
+Make sure to use <code>Content-Type:application/json</code>.
 
 ## Configuration
 The following environment variables can be set

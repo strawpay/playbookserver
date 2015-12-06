@@ -3,11 +3,6 @@ import play.api.libs.json.Json
 import play.api.test.Helpers._
 import play.api.test._
 
-/**
-  * Add your spec here.
-  * You can mock out a whole application including requests, plugins etc.
-  * For more information, consult the wiki.
-  */
 class ApplicationSpec extends PlaySpec with OneAppPerSuite {
 
   implicit override lazy val app: FakeApplication = {
@@ -19,10 +14,15 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
     )
   }
 
-  "Application" should {
+  "Rocannon" should {
 
-    "send 404 on a bad request" in {
-      val result = route(FakeRequest(GET, "/boum")).get
+    "send 404 on a non existing inventory" in {
+      val result = route(FakeRequest(GET, "/not-an-inventory")).get
+      status(result) must be(NOT_FOUND)
+    }
+
+    "send 404 on a non existing playbook" in {
+      val result = route(FakeRequest(GET, "/inventory/not-a-file")).get
       status(result) must be(NOT_FOUND)
     }
 
@@ -30,7 +30,7 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
       val home = route(FakeRequest(GET, "/")).get
       status(home) must be(OK)
       contentType(home) must be(Some("text/html"))
-      contentAsString(home) must include("Playbookserver")
+      contentAsString(home) must include("Rocannon")
     }
 
     "respond on ping" in {
