@@ -18,7 +18,7 @@ libraryDependencies ++= Seq(
 
 maintainer := "Strawpay AB <info@strawpay.com>"
 
-dockerRepository := Some("strawpay.artifactoryonline.com")
+dockerRepository := Some("strawpay-docker-dockerv2-local.artifactoryonline.com")
 
 dockerBaseImage := "relateiq/oracle-java8"
 
