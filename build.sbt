@@ -10,6 +10,12 @@ libraryDependencies ++= Seq(
   "org.scalatestplus" %% "play" % "1.4.0-M3" % "test"
 )
 
+libraryDependencies ++= Seq(
+  "org.webjars" % "foundation" % "5.5.2",
+  "org.webjars" % "jquery" % "2.1.4",
+  "org.webjars" % "modernizr" % "2.8.3",
+  "org.webjars" % "jquery" % "2.1.4")
+
 maintainer := "Strawpay AB <info@strawpay.com>"
 
 dockerRepository := Some("strawpay.artifactoryonline.com")

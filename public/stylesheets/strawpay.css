@@ -1,0 +1,40 @@
+.C_align-parent {
+   /* position: relative;*/
+}
+
+.C_align-child {
+    padding: 4% 0;
+ /*   position: absolute;
+    top: 50%;
+    left: 50%;
+    height: 30%;
+    width: 50%;
+    margin: -15% 0 0 -25%;
+    */
+}
+
+.straw_text {
+    color: #333333;
+    font-family: verdana, sans-serif;
+}
+
+.straw_light_text {
+    color: #666666;
+    font-family: verdana, sans-serif;
+}
+
+.footer {
+    background: #919191;
+    padding: 24px 0 10px;
+    color: white;
+}
+
+/* For the Magnific popup */
+.white-popup {
+    position: relative;
+    background: #FFF;
+    padding: 20px;
+    width: auto;
+    max-width: 500px;
+    margin: 20px auto;
+}

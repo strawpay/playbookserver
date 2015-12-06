@@ -30,7 +30,7 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
       val home = route(FakeRequest(GET, "/")).get
       status(home) must be(OK)
       contentType(home) must be(Some("text/html"))
-      contentAsString(home) must include("Strawpay Playbook server.")
+      contentAsString(home) must include("Playbookserver")
     }
 
     "respond on ping" in {

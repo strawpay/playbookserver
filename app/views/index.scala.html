@@ -1,5 +1,25 @@
-@(message: String)
+@import scala.reflect.io.Directory
+@(dir:Directory, command:String, vaultFile:String)
+@import buildinfo.BuildInfo
 
 @main("PlaybookServer") {
-    @message
+
+    <div class="row">
+        <table>
+            <caption>Playbookserver</caption>
+            <tr><th>Playbooks directory</th><td>@dir</td></tr>
+            <tr><th>Ansible command</th><td>@command</td></tr>
+            <tr><th>Vault file</th><td>@vaultFile</td></tr>
+        </table>
+    </div>
+
+    <div class="row">
+        <table>
+            <caption>Build info</caption>
+            <tr><th>Name</th><td>@BuildInfo.name</td></tr>
+            <tr><th>Version</th><td>@BuildInfo.version</td></tr>
+            <tr><th>Scala</th><td>@BuildInfo.scalaVersion</td></tr>
+            <tr><th>Sbt</th><td>@BuildInfo.sbtVersion</td></tr>
+        </table>
+    </div>
 }

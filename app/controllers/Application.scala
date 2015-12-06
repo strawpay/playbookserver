@@ -18,7 +18,7 @@ object Application extends Controller {
   val vaultFile = Play.configuration.getString("ansible.vault_password_file").get
 
   def index = Action {
-    Ok(views.html.index("Strawpay Playbook server."))
+    Ok(views.html.index(dir, ansible, vaultFile))
   }
 
   def play(inventoryName: String, playbookName: String): Action[JsValue] = Action(parse.json) { request =>
