@@ -43,7 +43,9 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
       val result = route(FakeRequest(POST, "/inventory/play.yaml", FakeHeaders(), extraVars)).get
       status(result) must be(OK)
       contentType(result) must be(Some("application/json"))
-      contentAsString(result) must be("{\"status\":\"success\",\"message\":\"-v -i test/resources/inventory -e {'version':'1.0'} --vault-password-file test/resources/password test/resources/play.yaml\"}")
+      contentAsString(result) must startWith("{\"status\":\"success\",\"message\":\"-v -i test/resources/inventory -e {'version':'1.0'} --vault-password-file ")
+      contentAsString(result) must endWith("test/resources/play.yaml\"}")
+
     }
 
     "report error if the playbook fails" in {
