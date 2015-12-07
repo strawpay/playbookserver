@@ -16,8 +16,6 @@ libraryDependencies ++= Seq(
   "org.webjars" % "modernizr" % "2.8.3",
   "org.webjars" % "jquery" % "2.1.4")
 
-import com.typesafe.sbt.packager.docker._
-
 maintainer := "Strawpay AB <info@strawpay.com>"
 
 dockerRepository := Some("strawpay-docker-dockerv2-local.artifactoryonline.com")
@@ -42,8 +40,8 @@ buildInfoKeys := Seq[BuildInfoKey](
 git.useGitDescribe := true
 
 versionFile := {
-  val file = target.value / "version.txt"
-  IO.write(file, s"${version.value}")
+  val file = target.value / "version.json"
+  IO.write(file, s"""{"version":"${version.value}"}""")
   println(version.value)
 }
 
