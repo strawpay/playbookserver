@@ -1,5 +1,6 @@
 @import scala.reflect.io.Directory
-@(dir:Directory, command:String, vaultFile:String)
+@import org.joda.time.DateTime
+@(dir:Directory, command:String, ansibleVersion: String , startedAt:DateTime)
 @import buildinfo.BuildInfo
 
 @main("Rocannon") {
@@ -9,7 +10,8 @@
             <caption>Rocannon</caption>
             <tr><th>Playbooks directory</th><td>@dir</td></tr>
             <tr><th>Ansible command</th><td>@command</td></tr>
-            <tr><th>Vault file</th><td>@vaultFile</td></tr>
+            <tr><th>Ansible version</th><td>@ansibleVersion</td></tr>
+            <tr><th>Strated at</th><td>@startedAt</td></tr>
         </table>
     </div>
 
