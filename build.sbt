@@ -16,13 +16,17 @@ libraryDependencies ++= Seq(
   "org.webjars" % "modernizr" % "2.8.3",
   "org.webjars" % "jquery" % "2.1.4")
 
+import com.typesafe.sbt.packager.docker._
+
 maintainer := "Strawpay AB <info@strawpay.com>"
 
 dockerRepository := Some("strawpay-docker-dockerv2-local.artifactoryonline.com")
 
-dockerBaseImage := "relateiq/oracle-java8"
+dockerBaseImage := "strawpay/ansible-java8"
 
 dockerExposedPorts := Seq(9000)
+
+dockerExposedVolumes in Docker := Seq("/playbooks")
 
 buildInfoSettings
 
