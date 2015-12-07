@@ -44,7 +44,7 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
       val result = route(FakeRequest(POST, s"/inventory/play.yaml?buildNumber=$buildNumber", FakeHeaders(), extraVars)).get
       status(result) must be(OK)
       contentType(result) must be(Some("application/json"))
-      contentAsString(result) must startWith(s"""{"status":"success","buildNumber":"$buildNumber","message":"-v -i test/resources/inventory -e {'version':'1.0'} --vault-password-file""")
+      contentAsString(result) must startWith(s"""{"status":"success","buildNumber":"$buildNumber","message":"-vvvv -i test/resources/inventory -e {'version':'1.0'} --vault-password-file""")
       contentAsString(result) must endWith("""test/resources/play.yaml"}""")
     }
 

@@ -39,7 +39,7 @@ object Application extends Controller {
       val stdout = new StringBuilder
       val stderr = new StringBuilder
       val cmd = Seq(ansible,
-        "-v",
+        "-vvvv",
         "-i", inventory.toString(),
         "-e", request.body.toString(),
         "--vault-password-file", passwordFile,
