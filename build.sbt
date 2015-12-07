@@ -26,6 +26,8 @@ dockerExposedPorts := Seq(9000)
 
 dockerExposedVolumes in Docker := Seq("/playbooks")
 
+daemonUser in Docker := "root"
+
 buildInfoSettings
 
 sourceGenerators in Compile <+= buildInfo
