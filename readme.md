@@ -43,7 +43,7 @@ The following environment variables can be set
     <tr>
         <td>ANSIBLE_COMMAND</td>
         <td>Path to the ansible-playbook command</td>
-        <td>/usr/local/bin/ansible-playbook</td>
+        <td>/usr/bin/ansible-playbook</td>
         </tr>
     <tr>
         <td>PLAYBOOKS</td>
@@ -51,9 +51,9 @@ The following environment variables can be set
         <td>/playbooks</td>
     </tr>
     <tr>
-        <td>VAULT_PASSWORD_FILE</td>
-        <td>Path to the vault-password-file</td>
-        <td>/root/.vault-password</td>
+        <td>VAULT_PASSWORD</td>
+        <td>The vault password to use</td>
+        <td>changeme</td>
     </tr> 
     <tr>
         <td>CRYPTO_SECRET</td>
