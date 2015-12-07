@@ -39,13 +39,23 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
     }
 
     "run a playbook with success" in {
+      val buildNumber = "4711"
       val extraVars = Json.parse( """{"version": "1.0" }""")
-      val result = route(FakeRequest(POST, "/inventory/play.yaml", FakeHeaders(), extraVars)).get
+      val result = route(FakeRequest(POST, s"/inventory/play.yaml?buildNumber=$buildNumber", FakeHeaders(), extraVars)).get
       status(result) must be(OK)
       contentType(result) must be(Some("application/json"))
-      contentAsString(result) must startWith("{\"status\":\"success\",\"message\":\"-v -i test/resources/inventory -e {'version':'1.0'} --vault-password-file ")
-      contentAsString(result) must endWith("test/resources/play.yaml\"}")
+      contentAsString(result) must startWith(s"""{"status":"success","buildNumber":"$buildNumber","message":"-v -i test/resources/inventory -e {'version':'1.0'} --vault-password-file""")
+      contentAsString(result) must endWith("""test/resources/play.yaml"}""")
+    }
 
+    "buildNumber with \" are escaped" in {
+      val buildNumber = "evil\""
+      val buildNumberEscaped = "evil\"".replace("\"", "'")
+      val extraVars = Json.parse( """{"version": "1.0" }""")
+      val result = route(FakeRequest(POST, s"/inventory/play.yaml?buildNumber=$buildNumber", FakeHeaders(), extraVars)).get
+      status(result) must be(OK)
+      contentType(result) must be(Some("application/json"))
+      contentAsString(result) must include(s""""buildNumber":"$buildNumberEscaped"""")
     }
 
     "report error if the playbook fails" in {
@@ -53,7 +63,7 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
       val result = route(FakeRequest(POST, "/inventory/play.yaml", FakeHeaders(), extraVars)).get
       status(result) must be(SERVICE_UNAVAILABLE)
       contentType(result) must be(Some("application/json"))
-      contentAsString(result) must include ("{\"status\":\"failed\",\"message\":")
+      contentAsString(result) must include ("""{"status":"failed","buildNumber":"","message":""")
     }
 
   }

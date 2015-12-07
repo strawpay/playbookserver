@@ -44,19 +44,20 @@ object Application extends Controller {
         "-e", request.body.toString(),
         "--vault-password-file", passwordFile,
         playbook.toString())
+      val buildNumber = request.getQueryString("buildNumber").getOrElse("").replace("\"", "'")
       val cmdString = cmd.reduce((s, i) => s"$s $i")
       Logger.debug(s"calling ${cmdString}")
       val code = cmd ! ProcessLogger(stdout append _, stderr append _)
       if (code == 0) {
-        Logger.info(s"Playbook success\ncommand: $cmdString\n$stdout")
+        Logger.info(s"Playbook success buildNumber=$buildNumber\ncommand: $cmdString\n$stdout")
         val message = stdout.toString.replace("\"", "'")
-        Some(Ok(Json.parse( s"""{"status":"success", "message": "$message"}""")))
+        Some(Ok(Json.parse( s"""{"status":"success","buildNumber": "$buildNumber","message": "$message"}""")))
       }
       else {
-        val message = s"Playbook failed, $cmdString,  exit code $code\\n$stdout\\n$stderr"
+        val message = s"Playbook failed buildNumber=$buildNumber, $cmdString,  exit code $code\\n$stdout\\n$stderr"
         Logger.warn(message)
         val escaped = message.replace("\"", "'")
-        Some(ServiceUnavailable((Json.parse( s"""{"status":"failed", "message": "$escaped"}"""))))
+        Some(ServiceUnavailable((Json.parse( s"""{"status":"failed","buildNumber": "$buildNumber","message": "$escaped"}"""))))
       }
     }
     result.get
