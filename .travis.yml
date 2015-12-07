@@ -1,0 +1,45 @@
+sudo: required
+
+cache:
+  directories:
+  - "$HOME/.ivy2"
+  - "$HOME/.sbt"
+
+services:
+  - docker
+
+language: scala
+
+scala:
+  - 2.11.7
+
+jdk:
+  - oraclejdk8
+
+before_script:
+  - openssl aes-256-cbc -K $encrypted_6a59c36769db_key -iv $encrypted_6a59c36769db_iv -in .travis.cert.tar.enc -out .travis.cert.tar -d
+  - tar xf .travis.cert.tar
+  - docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USER" -p="$DOCKER_PASSWORD" https://strawpay-docker-dockerv2-local.artifactoryonline.com
+
+script:
+  - sbt ++$TRAVIS_SCALA_VERSION -J-XX:ReservedCodeCacheSize=256M test docker:publish versionFile
+  - curl --cacert strawpayca.crt --cert travis.pem -d @$(<server/target/version.json) "https://rocannon.strawpay.com/internal/rocannon.yaml"
+  
+after_script:
+  - rm -f $HOME/.docker/config.json
+  - rm -f travis.pem strawpayca.crt .travis.cert.tar
+  - find $HOME/.sbt -name "*.lock" -exec rm {} \;
+  - find $HOME/.ivy2 -name "ivydata-*.properties" -exec rm {} \;
+  
+env:
+  global:
+    
+      - secure: "WJAblIKtYjEi86OqsVS9evxZL93daWDV/Yyjw8K1oDfie5VnOIg/KGmrYozaEuSsxglJ+5zGqLDyvO+nfzDJqOILhBd9mRtUx12KRepQpeIUCZMAJcpmNCK0SCDCUbFY5Wnk4anDffwOp3AyUuA8BxIs5Z7e1/d6um7dzFXuSKxb1B0zwXQ6Qo0zVwCaNBnDa9fVkv1B4yH6AYNneSYDGLlQA4/y3ULIWT3xcgjuXfhbfIchE8BQBYhvaHxbnKUi8+z3320dsHq4/IUi/L+Y3Unx4Z+IdRVPZXf7W4XDykbRwRR9jFYT7WcA6SN464EmHxELc0Per/yfT7PPj5m6/S/UHcTKeR9e2ifRddudyA3FSlsSFndCqzVHp3KfU/KuN07Hl2XZtjZkZusjSSM0rdlzvcxkKpYxS/efNbcAlYb5CoG1YMea6OUtoQ/hZqpwpCziUWLOJyc3Uwgmn3s5S59fviMLtTn1Z3GcKag8sSLNUZGXRQWMGPdY+iCJlJIakzRXOWvv7/shG3OJC3Iy4ryDK3RXDWdh/lXqkjQHj3/TNRroIet/7StEHpn4OwyVXwwTpREa6hFk29EO6GJ31Q58U2unyEXpKViXOIz18DCPvOUV/Lfg9tVlDoFvBAi2crrl2YsYTVhKu3TcXILy/TC3DMRPsmQubcgGOcv5jnw=" # DOCKER_USER
+
+      - secure: "BXhDaDKEOqD+D7ZohyA/Rg5g65drIL7BQMMsfAXZO5U8z472/cKcTPVgpqMdBg47ixJD2pT8GPZbF9jmyd88ZnIorN/gUfHeb3DNnNu25HTE9Vx4dg3/epfOZ3EPhVFQ5ihKQqUIpL3mFJ8Sc5pGaOsVj7k+zR9ANis70owTBIdlon8S9CKyC0HadKjB0FEyU1wfGcNA7b5b704RET4t8avZf9dNjZQTFk0yowKP2tiTqGdestyJ5JNrobV7pHcMp0xMwdpj4e5LSQNZ0ILp8DQz3IehUZ25CPa4tO97+7HXoqjJ6iU4d2L4F7C/iMtfFltAU+YYQhN0r5kAIV1fE0hEAUJjHQzNsFqbEAQV31oOIsVNtbbVsSbs4FddyKRoipXx1a0yrkHdv4ACEoARI5zRnoi50oYoPCuol8h2PuYs8fNgpYB+mkO6J+EnsSaOEI0B/FKmTuwLLrmA0GLagFdmYVKPhrPNvbMuRrCK3eExDNqPB+yyb0Ps+jBnBdlT+DKTGIjzGj2AQ5mWlkZsW/lqNlLK7MfRDPKQxHVqulRlMnvoqsTyiXkI+Y6WOvk+7bXYRbfGMBITW9zF2sokDWlDFD7yH0f1tPaOpGWHcRIbgYKtHuTDdZxAdrG7fnBtX+tYgzMmIKHjeuL2Cb7ODD2Prwk24aMqbNSY2Jsz/ZM=" # DOCKER_PASSWORD
+
+      - secure: "x61weM3yfUjQ3TX2RCLr2hC1+sXfMZYp9CWJzgKc2h/sVpZwvpFtwJO9/X6RO8YLPjYeBtVc0QU7/d/zywU4siHe8guN8OWxYeKlKaIhDzPyEcpd2QpuL6ca+kgI9Mz4/UCW3SyniLsc2Yo5h+9XnflRFJ6F/f/9eFTXO8J6qq3zYjvNJneaOS+RNK+0qaasScnu4UP7mvVt4W7G7SfEtyYaGW8fDPlzWvtQdTYwtMPJWo3GCenNFqCtbSFFY2SgS3rStqZkzCvxUqLA6OqPWBBk+ch36E0/lrikZz2hNd3sshsvX1QZixoJFPU+umQjOtLC6CF+pPDx469ho7m4Ia+l9OAOB15EQ8Rv0iaHPBK0rAOwgO5xrdZHxJuYzXp3k6Yk7F0kuAj0b3waorFW72aHExfG2v9oENBMALZP15PG8vdYqabWrwwjxelwSDJrieuDq9u56Y8+ZyvcGGANYzPhYWPy3qPJM17IspxwDolARAXOYWYPaRwpAyoUyq1PxI1Oq1MCjZNS0JA7YgA9yAc6EkBD7FW5ydhgrxT8dOvGWqPyT6aB6DFm75nMfWh2HE1JFiC/Y/KX63P0WSXUjG1pGYN5hjX8zniZzEwSNNvvf5pTlaJYaZ+UKYLDX7UVV+V7Kmug4xOB4kLcgCx2p5cP/An7FjwWNue85wxTmbA=" # DOCKER_EMAIL
+
+notifications:
+  slack:
+    secure: "n8ATtsaC0JE+WELPOc550davu/5OQgrrB/A5Lgbg1rYpF8tYXDLrCsAgFOo6jqYmZOuF0HN3cKs1BL8bGg4dNSpIsLo5eJdz7SM0kh3Si7egYFqZHou8Wm6sbkgBhAf9LjWHRy6RV/5jbd5FncCG7TaOfm17nO3my+5Hfs4jJaueAjXLtyDjSseGpHnGHMHQh2HRZvpWlWFM1itE1bj9nIFhEzVX+1NasIenUj5oLV5M7oGa6wWDDMHBwNjrm5YFFih1FGzn9Sj0ockRbrWF0+RoTN8bFE5UH2bVBjnqmgxO9JhjyGYg2PcLtLeoWj06a7ynLJlQ0Skokfv1KMcZS/mDGEN6st5OFiDqwusjVOBC9WPi0WJKk9XrvlPGAEdsYcip1ey8H0dE+XUlM/YXnRtNebgaC83pnQOfGa6S9Dsve2dzTwFTHdrKLk97y1TDiZmGoCqJYLeSJgbzMvyem3VJQ5S9Mjm1Sx4B4gDssbRtLRnP9CTotQ5o57b7VlaobEI3U5uHtzAnTqsY8kLa0mkIqPR2QJQv4/05zO1RSsWtpgIc8vepg46cePOSOy4A3hh9GVAcdES8FhIRPhYw+Q+P9LimPf665bhI3JcK+k9Ny+x7IjgJzTd7Y+BPZ+asfhw4aWwOC41RmG7BKDki9k6ZqT9iSReQFX/ypsnzQmA="
