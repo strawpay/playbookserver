@@ -44,19 +44,19 @@ object Application extends Controller {
         "-e", request.body.toString(),
         "--vault-password-file", passwordFile,
         playbook.toString())
-      val buildNumber = request.getQueryString("buildNumber").getOrElse("").replace("\"", "'")
+      val buildNumber = escapeJson(request.getQueryString("buildNumber").getOrElse(""))
       val cmdString = cmd.reduce((s, i) => s"$s $i")
       Logger.debug(s"calling ${cmdString}")
       val code = cmd ! ProcessLogger(stdout append _, stderr append _)
       if (code == 0) {
         Logger.info(s"Playbook success buildNumber=$buildNumber\ncommand: $cmdString\n$stdout")
-        val message = stdout.toString.replace("\"", "'")
+        val message = escapeJson(stdout.toString)
         Some(Ok(Json.parse( s"""{"status":"success","buildNumber": "$buildNumber","message": "$message"}""")))
       }
       else {
         val message = s"Playbook failed buildNumber=$buildNumber, $cmdString,  exit code $code\\n$stdout\\n$stderr"
         Logger.warn(message)
-        val escaped = message.replace("\"", "'")
+        val escaped = escapeJson(message)
         Some(ServiceUnavailable((Json.parse( s"""{"status":"failed","buildNumber": "$buildNumber","message": "$escaped"}"""))))
       }
     }
@@ -65,6 +65,10 @@ object Application extends Controller {
 
   def ping = Action {
     Ok.withHeaders(CACHE_CONTROL -> "no-cache")
+  }
+
+  private def escapeJson(input:String):String = {
+    input.replace("\"", "^").replace("\'", "^").replace("\\", "/")
   }
 
   private def checkPath(file: Path, hint: String): Option[Result] = {
