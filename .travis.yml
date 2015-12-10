@@ -23,7 +23,7 @@ before_script:
 
 script:
   - sbt ++$TRAVIS_SCALA_VERSION -J-XX:ReservedCodeCacheSize=256M test docker:publish versionFile
-  - curl -f -X POST -H "Content-Type:application/json" --cacert strawpayca.crt --cert travis.pem -d @target/version.json "https://rocannon.strawpay.com/internal/rocannon.yaml?buildNumber=$TRAVIS_BUILD_NUMBER%28$TRAVIS_COMMIT%29"
+#  - curl -f -X POST -H "Content-Type:application/json" --cacert strawpayca.crt --cert travis.pem -d @target/version.json "https://rocannon.strawpay.com/internal/rocannon.yaml?buildNumber=$TRAVIS_BUILD_NUMBER%28$TRAVIS_COMMIT%29"
   
 after_script:
   - rm -f $HOME/.docker/config.json
