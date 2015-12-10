@@ -19,6 +19,7 @@ object Application extends Controller {
   if (!dir.isDirectory) throw new ConfigurationException(s"$dir is not a directory")
   val ansible = Play.configuration.getString("ansible.command").get
   val vaultPassword = Play.configuration.getString("ansible.vault_password").get
+  val verbose = Play.configuration.getBoolean("ansible.verbose").getOrElse(false)
   val passwordFile = createTempVaultPassFile()
   val startedAt = DateTime.now.toDateTime(DateTimeZone.UTC)
   val ansibleVersion = s"$ansible --version" !!
@@ -38,26 +39,29 @@ object Application extends Controller {
 
       val stdout = new StringBuilder
       val stderr = new StringBuilder
-      val cmd = Seq(ansible,
-        "-v",
+      val cmdPre = Seq(ansible,
         "-i", inventory.toString(),
         "-e", request.body.toString(),
         "--vault-password-file", passwordFile,
         playbook.toString())
+      val (cmd) = if (verbose) {
+        (cmdPre :+ "-v").mkString(" ")
+      } else {
+        cmdPre.mkString(" ")
+      }
       val buildNumber = escapeJson(request.getQueryString("buildNumber").getOrElse(""))
-      val cmdString = cmd.reduce((s, i) => s"$s $i")
-      Logger.debug(s"calling ${cmdString}")
+      Logger.debug(s"running:$cmd")
       val code = cmd ! ProcessLogger(stdout append _, stderr append _)
       if (code == 0) {
-        Logger.info(s"Playbook success buildNumber=$buildNumber\ncommand: $cmdString\n$stdout")
+        Logger.info(s"Playbook:success buildNumber:$buildNumber command:{$cmd} stdout:{$stdout}")
         val message = escapeJson(stdout.toString)
         Some(Ok(Json.parse( s"""{"status":"success","buildNumber": "$buildNumber","message": "$message"}""")))
       }
       else {
-        val message = s"Playbook failed buildNumber=$buildNumber, $cmdString,  exit code $code\\n$stdout\\n$stderr"
+        val message = s"Playbook:failed buildNumber:$buildNumber, exitcode:$code, command:{$cmd}, stdout:$stdout stderr:$stderr}"
         Logger.warn(message)
         val escaped = escapeJson(message)
-        Some(ServiceUnavailable((Json.parse( s"""{"status":"failed","buildNumber": "$buildNumber","message": "$escaped"}"""))))
+        Some(ServiceUnavailable(Json.parse( s"""{"status":"failed","buildNumber": "$buildNumber","message": "$escaped"}""")))
       }
     }
     result.get
@@ -67,7 +71,7 @@ object Application extends Controller {
     Ok.withHeaders(CACHE_CONTROL -> "no-cache")
   }
 
-  private def escapeJson(input:String):String = {
+  private def escapeJson(input: String): String = {
     input.replace("\"", "^").replace("\'", "^").replace("\\", "/")
   }
 
