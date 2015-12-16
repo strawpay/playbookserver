@@ -20,7 +20,7 @@ or
 
 ## Accessing
 
-Use http POST to http://rocannon/inventory-file/playbook-file
+Use http POST to http://rocannon/inventory-file/playbook-file[?refId=refId]
 
 Where inventory-file and playbook-file may be relative to the playbook directory.
 
@@ -32,6 +32,8 @@ The data is json encoded extra-vars:
     "variable2" : "value"
 }
 </code>
+
+The optional refId query parameter can be any string.
 
 Make sure to use <code>Content-Type:application/json</code>.
 

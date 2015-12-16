@@ -12,6 +12,7 @@ import play.api.Logger
 
 import scala.reflect.io.{Directory, Path}
 import scala.sys.process._
+import scala.util.Random
 
 object Application extends Controller {
 
@@ -23,6 +24,7 @@ object Application extends Controller {
   val passwordFile = createTempVaultPassFile()
   val startedAt = DateTime.now.toDateTime(DateTimeZone.UTC)
   val ansibleVersion = s"$ansible --version" !!
+  val random = Random
 
   def index = Action {
     Ok(views.html.index(dir, ansible, ansibleVersion, startedAt))
@@ -30,11 +32,15 @@ object Application extends Controller {
 
   def play(inventoryName: String, playbookName: String): Action[JsValue] = Action(parse.json) { request =>
 
+    val buildId = Math.abs(random.nextInt).toString
+    val refId = escapeJson(request.getQueryString("refId").getOrElse(""))
+    Logger.info(s"""{buildId:$buildId refId:$refId action:"runningPlaybook" inventory:$inventoryName playbook:$playbookName remoteAddress:${request.remoteAddress}""")
+
     val inventory = dir / inventoryName
     val playbook = dir / playbookName
 
-    val result = checkPath(inventory, "inventory") orElse {
-      checkPath(playbook, "playbook")
+    val result = checkPath(inventory, "inventory", buildId, refId) orElse {
+      checkPath(playbook, "playbook", buildId, refId)
     } orElse {
 
       val stdout = new StringBuilder
@@ -49,19 +55,20 @@ object Application extends Controller {
       } else {
         cmdPre.mkString(" ")
       }
-      val buildNumber = escapeJson(request.getQueryString("buildNumber").getOrElse(""))
-      Logger.debug(s"running:$cmd")
+      Logger.debug(s"buildId:$buildId refId:$refId running:$cmd")
+      val start = DateTime.now().getMillis
       val code = cmd ! ProcessLogger(stdout append _, stderr append _)
+      val execTime = (DateTime.now.getMillis - start + 500) / 1000
       if (code == 0) {
-        Logger.info(s"Playbook:success buildNumber:$buildNumber command:{$cmd} stdout:{$stdout}")
+        Logger.info(s"Playbook:success buildId:$buildId refId:$refId execTime:$execTime command:{$cmd} stdout:{$stdout}")
         val message = escapeJson(stdout.toString)
-        Some(Ok(Json.parse( s"""{"status":"success","buildNumber": "$buildNumber","message": "$message"}""")))
+        Some(Ok(Json.parse( s"""{"buildId":$buildId,"refId":"$refId","status":"success","execTime":$execTime,"message":"$message"}""")))
       }
       else {
-        val message = s"Playbook:failed buildNumber:$buildNumber, exitcode:$code, command:{$cmd}, stdout:$stdout stderr:$stderr}"
+        val message = s"Playbook:failed, buildId:$buildId refId:$refId, execTime:$execTime, exitcode:$code, command:{$cmd}, stdout:$stdout stderr:$stderr}"
         Logger.warn(message)
         val escaped = escapeJson(message)
-        Some(ServiceUnavailable(Json.parse( s"""{"status":"failed","buildNumber": "$buildNumber","message": "$escaped"}""")))
+        Some(ServiceUnavailable(Json.parse( s"""{"buildId":$buildId,"refId":"$refId","status":"failed","execTime":$execTime,"message": "$escaped"}""")))
       }
     }
     result.get
@@ -75,15 +82,17 @@ object Application extends Controller {
     input.replace("\"", "^").replace("\'", "^").replace("\\", "/")
   }
 
-  private def checkPath(file: Path, hint: String): Option[Result] = {
+  private def checkPath(file: Path, hint: String, buildId:String, refId:String): Option[Result] = {
     if (file.exists) {
       None
     } else {
-      Some(NotFound(s"File not found: $hint file: $file"))
+      val message = s"buildId:$buildId refId:$refId File not found: $hint file: $file"
+      Logger.warn(message)
+      Some(NotFound(message))
     }
   }
 
-  private def createTempVaultPassFile(): String = {
+private def createTempVaultPassFile(): String = {
     val passwordFile = File.createTempFile("rocannon-", "tmp")
     passwordFile.deleteOnExit()
     val stream = new FileOutputStream(passwordFile)
