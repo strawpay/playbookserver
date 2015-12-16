@@ -34,7 +34,7 @@ object Application extends Controller {
 
     val buildId = Math.abs(random.nextInt).toString
     val refId = escapeJson(request.getQueryString("refId").getOrElse(""))
-    Logger.info(s"""{buildId:$buildId refId:$refId action:"runningPlaybook" inventory:$inventoryName playbook:$playbookName remoteAddress:${request.remoteAddress}""")
+    Logger.info(s"""{buildId:$buildId refId:$refId action:"play" inventory:$inventoryName playbook:$playbookName remoteAddress:${request.remoteAddress}""")
 
     val inventory = dir / inventoryName
     val playbook = dir / playbookName
@@ -55,7 +55,7 @@ object Application extends Controller {
       } else {
         cmdPre.mkString(" ")
       }
-      Logger.debug(s"buildId:$buildId refId:$refId running:$cmd")
+      Logger.debug(s"""buildId:$buildId refId:"$refId" running:"$cmd""""")
       val start = DateTime.now().getMillis
       val code = cmd ! ProcessLogger(stdout append _, stderr append _)
       val execTime = (DateTime.now.getMillis - start + 500) / 1000
