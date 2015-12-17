@@ -1,43 +1,50 @@
-# Rocannon a Playbook Server
+# Rocannon an Ansible Playbook Server
 
 This is a simple http server that runs ansible-playbooks
-It is based on the Play framework.
+It is written in Scala and based on the Play Framework.
 
 ## Running
-Run as a normal Play app or as a docker image:
+Run as a Play app or as a docker image:
 
-> sbt run
+    > sbt run
 
 or
 
-> sbt start
+    > sbt start</code>
 
 ### Docker instructions
+The build.sbt uses GitVersioning, so you must set a version git tag in your repo.
 
-> sbt docker:publishLocal
->
-> docker run -d -v [path-to-playbooks]:/playbooks rocannon
+    > git tag mytag-0.1.0
+    > sbt docker:publishLocal
+    > docker run -d -v [path-to-playbooks]:/playbooks rocannon:mytag-0.1.0
 
 ## Accessing
 
-Use http POST to http://rocannon/inventory-file/playbook-file[?refId=refId]
+Use http POST to `http://rocannon/inventory-file/playbook-file[?refId=refId]`
 
 Where inventory-file and playbook-file may be relative to the playbook directory.
 
 The data is json encoded extra-vars:
 
-<code>
-{ 
-    "variable1" : "value",
-    "variable2" : "value"
-}
-</code>
+    {
+        "variable1" : "value",
+        "variable2" : "value"
+    }
 
-The optional refId query parameter can be any string.
+Make sure to use `Content-Type:application/json`.
 
-Make sure to use <code>Content-Type:application/json</code>.
+The optional `refId` query parameter can be any string. And will be used in logs and the reply.
+
+### Response
+
 
 ## Configuration
+
+### Config file
+Uses TypeSafes config. Use a -Dconfig.file switch to override. See TypeSafe/Play Framework for more info.
+
+### Environment variables
 The following environment variables can be set
   
 <table>
@@ -61,6 +68,11 @@ The following environment variables can be set
         <td>CRYPTO_SECRET</td>
         <td>The play crypto secret to use</td>
         <td>Should be set.</td>
+    </tr>
+        <tr>
+        <td>LE_TOKEN</td>
+        <td>Logentries token</td>
+        <td>Will send okgs to logentries</td>
     </tr>
 </table>
 
