@@ -21,6 +21,7 @@ The build.sbt uses GitVersioning, so you must set a version git tag in your repo
 
 ## Accessing
 
+### Http 
 Use http POST to `http://rocannon/inventory-file/playbook-file[?refId=refId]`
 
 Where inventory-file and playbook-file may be relative to the playbook directory.
@@ -36,8 +37,14 @@ Make sure to use `Content-Type:application/json`.
 
 The optional `refId` query parameter can be any string. And will be used in logs and the reply.
 
-### Response
+### Script
 
+The bin/rocannon bash script can be used for convenience. 
+
+### Response
+Json formatted, example:
+    
+    {"buildId":606186755,"refId":"myId","status":"success","execTime":17,"message":"\nPLAY... trucated"} 
 
 ## Configuration
 
@@ -72,7 +79,7 @@ The following environment variables can be set
         <tr>
         <td>LE_TOKEN</td>
         <td>Logentries token</td>
-        <td>Will send okgs to logentries</td>
+        <td>Will send logs to L``ogentries</td>
     </tr>
 </table>
 

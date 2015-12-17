@@ -1,0 +1,40 @@
+<configuration>
+
+    <conversionRule conversionWord="coloredLevel" converterClass="play.api.Logger$ColoredLevel"/>
+
+    <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{ISO8601, Z} %-5coloredLevel [%thread] %logger - %message%n%xException{10}</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="le" class="com.logentries.logback.LogentriesAppender">
+        <Debug>False</Debug>
+        <Token>${LE_TOKEN}</Token>
+        <Ssl>False</Ssl>
+        <facility>USER</facility>
+        <layout>
+            <pattern>%d{ISO8601, Z} %-5level [%thread] %logger - %msg%n</pattern>
+        </layout>
+    </appender>
+
+    <logger name="com.strawpay" level="debug"/>
+    <logger name="application" level="debug"/>
+    <logger name="com.google.inject" level="info"/>
+    <logger name="root" level="info"/>
+    <logger name="play" level="info"/>
+
+    <!-- Off these ones as they are annoying, and anyway we manage configuration ourself -->
+    <logger name="com.avaje.ebean.config.PropertyMapLoader" level="OFF"/>
+    <logger name="com.avaje.ebeaninternal.server.core.XmlConfigLoader" level="OFF"/>
+    <logger name="com.avaje.ebeaninternal.server.lib.BackgroundThread" level="OFF"/>
+    <logger name="com.gargoylesoftware.htmlunit.javascript" level="OFF"/>
+
+
+    <root level="debug">
+        <appender-ref ref="le"/>
+        <appender-ref ref="stdout"/>
+    </root>
+
+
+</configuration>

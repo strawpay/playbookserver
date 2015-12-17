@@ -1,0 +1,68 @@
+#!/bin/bash
+
+# Deploy via Rocannon
+
+usage() {
+cat <<EOF
+
+$0 [-c cert ] [-a ca-cert ] -f version-file | -v version [ -b build ] [-u url] inventory playbook 
+
+Where:
+inventory     the inventory, internal, dev, test, production. master is mapped to test
+playbook      a playbook without extension .yaml stored in git@bitbucket.org:strawpay/playbooks.git
+
+Option
+
+-a ca-certfile      use cacert ca-cert-file
+-c cert-file        use cert cert-file
+-f version-file     version-file for version
+-v version          { "version":"$version"} as version
+-i refId            refId as refId
+-u url              url to rocannon server, defaults to https://rocannon.strawpay.com  
+
+EOF
+exit 1
+}
+
+cert=""
+cacert=""
+refId=""
+url=https://rocannon.strawpay.com
+while getopts "a:b:c:f:v:u:" opt; do
+    case $opt in
+	a)
+	    cacert="--cacert $OPTARG"
+	    ;;
+	c)
+	    cert="--cert $OPTARG"
+	    ;;
+	f)
+	    version="-d @$OPTARG"
+	    ;;
+	v)
+	    version="-d {\"version\":\"$OPTARG\"}"
+	    ;;
+	b)
+	    refId="?refId="+$OPTARG
+	    ;;
+	u)
+	    url=$OPTARG
+	    ;;
+	*)
+	    usage
+    esac
+done
+
+shift $(($OPTIND-1))
+
+if [ $# -ne 2 -o -z "$version" ]; then usage; fi
+
+case $1 in
+    master) inv=test ;;
+    internal|dev|test|production) inv=$1 ;;
+    *) usage ;;
+esac
+
+play=${2}.yaml
+
+curl -s -S  -f -X POST -H "Content-Type:application/json" $cacert $cert $version $url/$inv/$play$refId

@@ -55,9 +55,9 @@ object Application extends Controller {
       } else {
         cmdPre.mkString(" ")
       }
-      Logger.debug(s"""buildId:$buildId refId:"$refId" running:"$cmd""""")
+      Logger.debug(s"""buildId:$buildId refId:"$refId" command:"$cmd""""")
       val start = DateTime.now().getMillis
-      val code = cmd ! ProcessLogger(stdout append _, stderr append _)
+      val code = cmd ! ProcessLogger(appendLine(stdout, _), appendLine(stderr, _))
       val execTime = (DateTime.now.getMillis - start + 500) / 1000
       if (code == 0) {
         Logger.info(s"Playbook:success buildId:$buildId refId:$refId execTime:$execTime command:{$cmd} stdout:{$stdout}")
@@ -79,7 +79,7 @@ object Application extends Controller {
   }
 
   private def escapeJson(input: String): String = {
-    input.replace("\"", "^").replace("\'", "^").replace("\\", "/")
+    input.replace("\"", "^").replace("\'", "^").replace("\\", "/").replace("\n", "\\n")
   }
 
   private def checkPath(file: Path, hint: String, buildId:String, refId:String): Option[Result] = {
@@ -90,6 +90,10 @@ object Application extends Controller {
       Logger.warn(message)
       Some(NotFound(message))
     }
+  }
+
+  private def appendLine(builder:StringBuilder, line:String):Unit = {
+    builder.append(s"$line\n")
   }
 
 private def createTempVaultPassFile(): String = {
