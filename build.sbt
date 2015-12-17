@@ -15,7 +15,7 @@ libraryDependencies ++= Seq(
   "org.webjars" % "jquery" % "2.1.4",
   "org.webjars" % "modernizr" % "2.8.3",
   "org.webjars" % "jquery" % "2.1.4",
-  "com.logentries" % "logentries-appender" % "1.1.30"
+  "com.logentries" % "logentries-appender" % "1.1.32"
 )
 
 maintainer := "Strawpay AB <info@strawpay.com>"
