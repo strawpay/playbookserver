@@ -5,7 +5,7 @@
 usage() {
 cat <<EOF
 
-$0 [-c cert ] [-a ca-cert ] -f version-file | -v version [ -b build ] [-u url] inventory playbook 
+$0 [-c cert ] [-a ca-cert ] -f version-file | -v version [ -i refId ] [-u url] inventory playbook 
 
 Where:
 inventory     the inventory, internal, dev, test, production. master is mapped to test
@@ -13,11 +13,11 @@ playbook      a playbook without extension .yaml stored in git@bitbucket.org:str
 
 Option
 
--a ca-certfile      use cacert ca-cert-file
--c cert-file        use cert cert-file
+-a ca-certfile      use ca-cert-file as cacert
+-c cert-file        use cert-file as cert
 -f version-file     version-file for version
--v version          { "version":"$version"} as version
--i refId            refId as refId
+-v version          use { "version":"$version"} as version
+-i refId            use refId as refId
 -u url              url to rocannon server, defaults to https://rocannon.strawpay.com  
 
 EOF
@@ -28,7 +28,7 @@ cert=""
 cacert=""
 refId=""
 url=https://rocannon.strawpay.com
-while getopts "a:b:c:f:v:u:" opt; do
+while getopts "a:c:f:i:v:u:" opt; do
     case $opt in
 	a)
 	    cacert="--cacert $OPTARG"
@@ -42,13 +42,14 @@ while getopts "a:b:c:f:v:u:" opt; do
 	v)
 	    version="-d {\"version\":\"$OPTARG\"}"
 	    ;;
-	b)
-	    refId="?refId="+$OPTARG
+	i)
+	    refId="?refId=$OPTARG"
 	    ;;
 	u)
 	    url=$OPTARG
 	    ;;
 	*)
+	    echo "Unknown option $OPTARG"
 	    usage
     esac
 done
