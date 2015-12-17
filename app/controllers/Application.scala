@@ -58,21 +58,33 @@ object Application extends Controller {
       Logger.debug(s"""buildId:$buildId refId:"$refId" command:"$cmd""""")
       val start = DateTime.now().getMillis
       val code = cmd ! ProcessLogger(appendLine(stdout, _), appendLine(stderr, _))
-      val execTime = (DateTime.now.getMillis - start + 500) / 1000
+      val execTime = s"PT${(DateTime.now.getMillis - start + 500) / 1000}S"
+      def resultString(status:String, message:String):String = {
+        s"""{
+            |"playbook":"$playbookName",
+            | "inventory":"$inventoryName",
+            | "status":"$status",
+            | "buildId":$buildId,
+            | "refId":"$refId",
+            | "execTime":"$execTime",
+            | "message":"$message"
+            | }""".stripMargin
+      }
+
       if (code == 0) {
-        Logger.info(s"Playbook:success buildId:$buildId refId:$refId execTime:$execTime command:{$cmd} stdout:{$stdout}")
-        val message = escapeJson(stdout.toString)
-        Some(Ok(Json.parse( s"""{"buildId":$buildId,"refId":"$refId","status":"success","execTime":$execTime,"message":"$message"}""")))
+        Logger.info(resultString("success", stdout.toString))
+        Some(Ok(Json.parse(resultString("success", escapeJson(stdout.toString)) )))
       }
       else {
-        val message = s"Playbook:failed, buildId:$buildId refId:$refId, execTime:$execTime, exitcode:$code, command:{$cmd}, stdout:$stdout stderr:$stderr}"
-        Logger.warn(message)
-        val escaped = escapeJson(message)
-        Some(ServiceUnavailable(Json.parse( s"""{"buildId":$buildId,"refId":"$refId","status":"failed","execTime":$execTime,"message": "$escaped"}""")))
+        val message = stdout.append(s"\nstderr:$stderr").toString
+        Logger.warn(resultString("failed", message))
+        Some(ServiceUnavailable(Json.parse(resultString("failed", escapeJson(message)))))
       }
     }
     result.get
   }
+
+
 
   def ping = Action {
     Ok.withHeaders(CACHE_CONTROL -> "no-cache")

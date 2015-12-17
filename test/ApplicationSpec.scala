@@ -62,7 +62,13 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
       val result = post(refId)(Json.parse( """{"failure": "true" }"""))
       status(result) must be(SERVICE_UNAVAILABLE)
       contentType(result) must be(Some("application/json"))
-      contentAsString(result) must include( """"refId":"17","status":"failed","execTime":0,"message":""")
+      val js = contentAsJson(result)
+      (js \ "buildId").as[Int] must be > 0
+      (js \ "refId").as[String] must startWith (refId)
+      (js \ "status").as[String] must be("failed")
+      (js \ "execTime").as[String] must be("PT0S")
+      val message = (js \ "message").as[String]
+      message must include regex """\nstderr:""".r
     }
 
     "report empty refId in response if refId query parameter is empty" in {
@@ -84,10 +90,10 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
     status(result) must be(OK)
     contentType(result) must be(Some("application/json"))
     val js = Json.parse(contentAsString(result))
-    (js \ "buildId").as[Port] must be > 0
+    (js \ "buildId").as[Int] must be > 0
     (js \ "refId").as[String] must startWith (refId)
     (js \ "status").as[String] must be("success")
-    (js \ "execTime").as[Port] must be(0)
+    (js \ "execTime").as[String] must be("PT0S")
     val message = (js \ "message").as[String]
     message must fullyMatch regex """-i test/resources/inventory -e \{\^version\^:\^1.0\^\} --vault-password-file .* test/resources/play.yaml\n""".r
   }
