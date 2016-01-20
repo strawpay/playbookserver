@@ -58,8 +58,10 @@ shift $(($OPTIND-1))
 
 if [ $# -ne 2 -o -z "$version" ]; then usage; fi
 
+# Map branch to inventory
 case $1 in
     master) inv=test ;;
+    develop) inv=dev ;;
     *) inv=$1 ;;
 esac
 
