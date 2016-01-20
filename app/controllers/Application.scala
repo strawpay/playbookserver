@@ -50,7 +50,7 @@ object Application extends Controller {
         "-e", request.body.toString(),
         "--vault-password-file", passwordFile,
         playbook.toString())
-      val (cmd) = if (verbose) {
+      val cmd = if (verbose) {
         (cmdPre :+ "-v").mkString(" ")
       } else {
         cmdPre.mkString(" ")
