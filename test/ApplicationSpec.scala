@@ -94,7 +94,5 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
     (js \ "refId").as[String] must startWith (refId)
     (js \ "status").as[String] must be("success")
     (js \ "execTime").as[String] must be("PT0S")
-    val message = (js \ "message").as[String]
-    message must fullyMatch regex """-i test/resources/inventory -e \{\^version\^:\^1.0\^\} --vault-password-file .* test/resources/play.yaml\n""".r
   }
 }

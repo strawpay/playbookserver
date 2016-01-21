@@ -59,26 +59,27 @@ object Application extends Controller {
       val start = DateTime.now().getMillis
       val code = cmd ! ProcessLogger(appendLine(stdout, _), appendLine(stderr, _))
       val execTime = s"PT${(DateTime.now.getMillis - start + 500) / 1000}S"
-      def resultString(status:String, message:String):String = {
+      def resultString(status:String, message:Option[String]):String = {
+        val m:String = if (message.isDefined) s""" ,\n"message":"${message.get}" """ else ""
         s"""{
             |"playbook":"$playbookName",
             | "inventory":"$inventoryName",
             | "status":"$status",
             | "buildId":$buildId,
             | "refId":"$refId",
-            | "execTime":"$execTime",
-            | "message":"$message"
+            | "execTime":"$execTime" $m
             | }""".stripMargin
       }
 
       if (code == 0) {
-        Logger.info(resultString("success", stdout.toString))
-        Some(Ok(Json.parse(resultString("success", escapeJson(stdout.toString)) )))
+        Logger.trace(resultString("success", Some(stdout.toString)))
+        Logger.info(resultString("success", None))
+        Some(Ok(Json.parse(resultString("success", None))))
       }
       else {
         val message = stdout.append(s"\nstderr:$stderr").toString
-        Logger.warn(resultString("failed", message))
-        Some(ServiceUnavailable(Json.parse(resultString("failed", escapeJson(message)))))
+        Logger.warn(resultString("failed", Some(message)))
+        Some(ServiceUnavailable(Json.parse(resultString("failed", Some(escapeJson(message))))))
       }
     }
     result.get
