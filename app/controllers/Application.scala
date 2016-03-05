@@ -63,6 +63,7 @@ object Application extends Controller {
       def resultString(status:String, message:Option[String]):String = {
         val m:String = if (message.isDefined) s""" ,\n"message":"${message.get}" """ else ""
         s"""{
+            |"rocannon": "build_result",
             |"playbook":"$playbookName",
             | "inventory":"$inventoryName",
             | "status":"$status",
