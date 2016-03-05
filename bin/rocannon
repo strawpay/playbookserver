@@ -5,7 +5,7 @@
 usage() {
 cat <<EOF
 
-$0 [-c cert ] [-a ca-cert ] -f version-file | -v version [ -i refId ] [-u url] inventory playbook 
+$0 [-c cert ] [-a ca-cert ] [-u url]  -p | -f version-file | -v version [ -i refId ] inventory playbook 
 
 Where:
 inventory     the inventory, "master" is mapped to test
@@ -19,6 +19,7 @@ Option
 -v version          use { "version":"$version"} as version
 -i refId            use refId as refId
 -u url              url to rocannon server, defaults to https://rocannon.strawpay.com  
+-p                  ping, ie. access $url/ping
 
 EOF
 exit 1
@@ -28,7 +29,8 @@ cert=""
 cacert=""
 refId=""
 url=https://rocannon.strawpay.com
-while getopts "a:c:f:i:v:u:" opt; do
+
+while getopts "a:c:f:i:v:u:p" opt; do
     case $opt in
 	a)
 	    cacert="--cacert $OPTARG"
@@ -48,6 +50,9 @@ while getopts "a:c:f:i:v:u:" opt; do
 	u)
 	    url=$OPTARG
 	    ;;
+	p)
+	    ping=true
+	    ;;
 	*)
 	    echo "Unknown option $OPTARG"
 	    usage
@@ -56,15 +61,22 @@ done
 
 shift $(($OPTIND-1))
 
-if [ $# -ne 2 -o -z "$version" ]; then usage; fi
+if [ $ping ]; then
+    path=ping
+elif [ $# -ne 2 -o -z "$version" ]; then
+    usage;
+else
+    # Map branch to inventory
+    case $1 in
+	master) inv=test ;;
+	develop) inv=dev ;;
+	*) inv=$1 ;;
+    esac
+    
+    play=${2}.yaml
+    path=$inv/$play$refId
+    method="-X POST"
+    headers="-H Content-Type:application/json"
+fi
 
-# Map branch to inventory
-case $1 in
-    master) inv=test ;;
-    develop) inv=dev ;;
-    *) inv=$1 ;;
-esac
-
-play=${2}.yaml
-
-curl -s -S  -f -X POST -H "Content-Type:application/json" $cacert $cert $version $url/$inv/$play$refId
+curl -s -S  -f $method $headers $cacert $cert $version $url/$path

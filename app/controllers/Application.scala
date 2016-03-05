@@ -3,10 +3,11 @@ package controllers
 import java.io.{File, FileOutputStream}
 
 import akka.ConfigurationException
+import buildinfo.BuildInfo
 import org.joda.time.{DateTimeZone, DateTime}
 import play.api.Play.current
 import play.api._
-import play.api.libs.json.{Json, JsValue}
+import play.api.libs.json.{JsString, Json, JsValue}
 import play.api.mvc._
 import play.api.Logger
 
@@ -88,7 +89,10 @@ object Application extends Controller {
 
 
   def ping = Action {
-    Ok.withHeaders(CACHE_CONTROL -> "no-cache")
+    Ok( Json.obj(
+      "name" -> JsString(BuildInfo.name),
+      "version" -> JsString(BuildInfo.version)
+    )).withHeaders(CACHE_CONTROL -> "no-cache")
   }
 
   private def escapeJson(input: String): String = {
