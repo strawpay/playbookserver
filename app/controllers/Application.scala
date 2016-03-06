@@ -60,8 +60,8 @@ object Application extends Controller {
       val start = DateTime.now().getMillis
       val code = cmd ! ProcessLogger(appendLine(stdout, _), appendLine(stderr, _))
       val execTime = s"PT${(DateTime.now.getMillis - start + 500) / 1000}S"
-      def resultString(status:String, message:Option[String]):String = {
-        val m:String = if (message.isDefined) s""" ,\n"message":"${message.get}" """ else ""
+      def resultString(status: String, message: Option[String]): String = {
+        val m: String = if (message.isDefined) s""" ,\n"message":"${message.get}" """ else ""
         s"""{
             |"rocannon": "build_result",
             |"playbook":"$playbookName",
@@ -88,9 +88,8 @@ object Application extends Controller {
   }
 
 
-
   def ping = Action {
-    Ok( Json.obj(
+    Ok(Json.obj(
       "name" -> JsString(BuildInfo.name),
       "version" -> JsString(BuildInfo.version)
     )).withHeaders(CACHE_CONTROL -> "no-cache")
@@ -100,7 +99,7 @@ object Application extends Controller {
     input.replace("\"", "^").replace("\'", "^").replace("\\", "/").replace("\n", "\\n")
   }
 
-  private def checkPath(file: Path, hint: String, buildId:String, refId:String): Option[Result] = {
+  private def checkPath(file: Path, hint: String, buildId: String, refId: String): Option[Result] = {
     if (file.exists) {
       None
     } else {
@@ -110,11 +109,11 @@ object Application extends Controller {
     }
   }
 
-  private def appendLine(builder:StringBuilder, line:String):Unit = {
+  private def appendLine(builder: StringBuilder, line: String): Unit = {
     builder.append(s"$line\n")
   }
 
-private def createTempVaultPassFile(): String = {
+  private def createTempVaultPassFile(): String = {
     val passwordFile = File.createTempFile("rocannon-", "tmp")
     passwordFile.deleteOnExit()
     val stream = new FileOutputStream(passwordFile)
