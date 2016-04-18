@@ -8,7 +8,7 @@ cat <<EOF
 $0 [-c cert ] [-a ca-cert ] [-u url]  -p | -f version-file | -v version [ -i refId ] inventory playbook 
 
 Where:
-inventory     the inventory, "master" is mapped to test
+inventory     the inventory, "master" is mapped to test, prod to production, develop to dev
 playbook      a playbook without extension .yaml stored in git@bitbucket.org:strawpay/playbooks.git
 
 Option
@@ -70,6 +70,7 @@ else
     case $1 in
 	master) inv=test ;;
 	develop) inv=dev ;;
+	prod) inv=production ;;
 	*) inv=$1 ;;
     esac
     
