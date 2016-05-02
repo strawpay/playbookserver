@@ -62,13 +62,12 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
       val result = post(refId)(Json.parse( """{"failure": "true" }"""))
       status(result) must be(SERVICE_UNAVAILABLE)
       contentType(result) must be(Some("application/json"))
-      val js = contentAsJson(result)
-      (js \ "buildId").as[Int] must be > 0
+      val js = contentAsJson(result) \ "result"
+      (js \ "buildId").as[String].toLong > 0
       (js \ "refId").as[String] must startWith (refId)
       (js \ "status").as[String] must be("failed")
       (js \ "execTime").as[String] must be("PT0S")
-      val message = (js \ "message").as[String]
-      message must include regex """\nstderr:""".r
+      (js \ "message" \ "stderr").as[String] must be ("")
     }
 
     "report empty refId in response if refId query parameter is empty" in {
@@ -89,8 +88,8 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
   def verifySuccess(result: Future[Result], refId: String): Unit = {
     status(result) must be(OK)
     contentType(result) must be(Some("application/json"))
-    val js = Json.parse(contentAsString(result))
-    (js \ "buildId").as[Int] must be > 0
+    val js = Json.parse(contentAsString(result)) \ "result"
+    (js \ "buildId").as[String].toLong > 0
     (js \ "refId").as[String] must startWith (refId)
     (js \ "status").as[String] must be("success")
     (js \ "execTime").as[String] must be("PT0S")

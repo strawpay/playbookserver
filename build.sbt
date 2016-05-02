@@ -1,7 +1,14 @@
 name := "rocannon"
 
 lazy val rocannon = (project in file(".")).
-  enablePlugins(PlayScala, GitVersioning, GitBranchPrompt)
+  enablePlugins(BuildInfoPlugin, PlayScala, GitVersioning, GitBranchPrompt).
+  settings(
+    buildInfoKeys := Seq[BuildInfoKey](
+      name,
+      version,
+      scalaVersion,
+      sbtVersion
+    ))
 
 scalaVersion := "2.11.7"
 
@@ -30,16 +37,7 @@ dockerExposedVolumes in Docker := Seq("/playbooks")
 
 daemonUser in Docker := "root"
 
-buildInfoSettings
-
-sourceGenerators in Compile <+= buildInfo
-
-buildInfoKeys := Seq[BuildInfoKey](
-  name,
-  version,
-  scalaVersion,
-  sbtVersion
-)
+//sourceGenerators in Compile <+= buildInfo
 
 git.useGitDescribe := true
 

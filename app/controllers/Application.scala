@@ -7,7 +7,7 @@ import buildinfo.BuildInfo
 import org.joda.time.{DateTimeZone, DateTime}
 import play.api.Play.current
 import play.api._
-import play.api.libs.json.{JsString, Json, JsValue}
+import play.api.libs.json.{JsObject, JsString, JsValue, Json}
 import play.api.mvc._
 import play.api.Logger
 
@@ -35,7 +35,16 @@ object Application extends Controller {
 
     val buildId = Math.abs(random.nextInt).toString
     val refId = escapeJson(request.getQueryString("refId").getOrElse(""))
-    Logger.info(s"""{buildId:$buildId refId:$refId action:"play" inventory:$inventoryName playbook:$playbookName remoteAddress:${request.remoteAddress}""")
+    Logger.info(
+      JsObject(Seq(
+        "request" → JsObject(Seq(
+          "buildId" → JsString(buildId),
+          "refId" → JsString(refId),
+          "inventory" → JsString(inventoryName),
+          "playbook" → JsString(playbookName),
+          "remoteAddress" → JsString(request.remoteAddress)
+        )))).toString()
+    )
 
     val inventory = dir / inventoryName
     val playbook = dir / playbookName
@@ -56,32 +65,39 @@ object Application extends Controller {
       } else {
         cmdPre.mkString(" ")
       }
-      Logger.debug(s"""buildId:$buildId refId:"$refId" command:"$cmd""""")
+      Logger.debug(JsObject(Seq(
+        "buildId" → JsString(buildId),
+        "refId" → JsString(refId),
+        "command" → JsString(cmd)
+      )).toString)
       val start = DateTime.now().getMillis
       val code = cmd ! ProcessLogger(appendLine(stdout, _), appendLine(stderr, _))
       val execTime = s"PT${(DateTime.now.getMillis - start + 500) / 1000}S"
-      def resultString(status: String, message: Option[String]): String = {
-        val m: String = if (message.isDefined) s""" ,\n"message":"${message.get}" """ else ""
-        s"""{
-            |"rocannon": "build_result",
-            |"playbook":"$playbookName",
-            | "inventory":"$inventoryName",
-            | "status":"$status",
-            | "buildId":$buildId,
-            | "refId":"$refId",
-            | "execTime":"$execTime" $m
-            | }""".stripMargin
+      def resultString(status: String, message: Option[JsValue]): String = {
+        JsObject(Seq(
+          "result" → JsObject(Seq(
+            "buildId" → JsString(buildId),
+            "refId" -> JsString(refId),
+            "inventory" → JsString(inventoryName),
+            "playbook" → JsString(playbookName),
+            "status" → JsString(status),
+            "execTime" → JsString(execTime),
+            "message" → Json.toJson(message)
+          )))).toString
       }
 
       if (code == 0) {
-        Logger.trace(resultString("success", Some(stdout.toString)))
+        Logger.trace(resultString("success", Some(JsString(stdout.toString))))
         Logger.info(resultString("success", None))
         Some(Ok(Json.parse(resultString("success", None))))
       }
       else {
-        val message = stdout.append(s"\nstderr:$stderr").toString
+        val message = JsObject(Seq(
+          "stdout" → JsString(stdout.toString()),
+          "stderr" → JsString(stderr.toString())
+        ))
         Logger.warn(resultString("failed", Some(message)))
-        Some(ServiceUnavailable(Json.parse(resultString("failed", Some(escapeJson(message))))))
+        Some(ServiceUnavailable(Json.parse(resultString("failed", Some(message)))))
       }
     }
     result.get
