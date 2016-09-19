@@ -18,7 +18,7 @@ Option
 -f version-file     version-file for version
 -v version          use { "version":"$version"} as version
 -i refId            use refId as refId
--u url              url to rocannon server, defaults to https://rocannon.strawpay.com  
+-u url              url to rocannon server, defaults to https://rocannon.internal.strawpay.com  
 -p                  ping, ie. access $url/ping
 
 EOF
@@ -28,7 +28,7 @@ exit 1
 cert=""
 cacert=""
 refId=""
-url=https://rocannon.strawpay.com
+url=https://rocannon.internal.strawpay.com
 
 while getopts "a:c:f:i:v:u:p" opt; do
     case $opt in
