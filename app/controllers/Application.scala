@@ -70,6 +70,7 @@ object Application extends Controller {
         "refId" → JsString(refId),
         "command" → JsString(cmd)
       )).toString)
+      val gitPull = Seq()
       val start = DateTime.now().getMillis
       val code = cmd ! ProcessLogger(appendLine(stdout, _), appendLine(stderr, _))
       val execTime = s"PT${(DateTime.now.getMillis - start + 500) / 1000}S"
