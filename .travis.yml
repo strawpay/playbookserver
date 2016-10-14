@@ -19,7 +19,7 @@ jdk:
 before_script:
   - openssl aes-256-cbc -K $encrypted_6a59c36769db_key -iv $encrypted_6a59c36769db_iv -in .travis.cert.tar.enc -out .travis.cert.tar -d
   - tar xf .travis.cert.tar
-  - docker login -u=travis -p="$DOCKER_PASSWORD" https://strawpay-dockerv2-local.jfrog.io
+  - docker login -u travis -p "$DOCKER_PASSWORD" https://strawpay-dockerv2-local.jfrog.io
 
 script:
   - sbt ++$TRAVIS_SCALA_VERSION -J-XX:ReservedCodeCacheSize=256M test docker:publish versionFile
