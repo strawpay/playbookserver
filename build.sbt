@@ -27,7 +27,7 @@ libraryDependencies ++= Seq(
 
 maintainer := "Strawpay AB <info@strawpay.com>"
 
-dockerRepository := Some("strawpay-docker-dockerv2-local.artifactoryonline.com")
+dockerRepository := Some("strawpay-dockerv2-local.jfrog.io")
 
 dockerBaseImage := "strawpay/ansible-java8"
 
