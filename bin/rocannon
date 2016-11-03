@@ -66,15 +66,8 @@ if [ $ping ]; then
 elif [ $# -ne 2 -o -z "$version" ]; then
     usage;
 else
-    # Map branch to inventory
-    case $1 in
-	master) inv=stage ;;
-	develop) inv=dev ;;
-	*) inv=$1 ;;
-    esac
-    
-    play=${2}.yaml
-    path=$inv/$play$refId
+    play=$2.yaml
+    path=$1/$play$refId
     method="-X POST"
     headers="-H Content-Type:application/json"
 fi

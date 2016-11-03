@@ -26,15 +26,19 @@ object Application extends Controller {
   val startedAt = DateTime.now.toDateTime(DateTimeZone.UTC)
   val ansibleVersion = s"$ansible --version" !!
   val random = Random
+  val inventoryMap = Play.configuration.getConfig("inventoryMap").get
+  private val defaultInventory = Play.configuration.getString("defaultInventory").get
 
   def index = Action {
     Ok(views.html.index(dir, ansible, ansibleVersion, startedAt))
   }
 
-  def play(inventoryName: String, playbookName: String): Action[JsValue] = Action(parse.json) { request =>
+  def play(branch: String, playbookName: String): Action[JsValue] = Action(parse.json) { request =>
 
     val buildId = Math.abs(random.nextInt).toString
     val refId = escapeJson(request.getQueryString("refId").getOrElse(""))
+    val inventoryName = inventoryMap.getString(branch).getOrElse(defaultInventory)
+
     Logger.info(
       JsObject(Seq(
         "request" → JsObject(Seq(
@@ -51,10 +55,11 @@ object Application extends Controller {
 
     val result = checkPath(inventory, "inventory", buildId, refId) orElse {
       checkPath(playbook, "playbook", buildId, refId)
-    } orElse {
-
+    } orElse gitPull() orElse {
+      // Run ansible
       val stdout = new StringBuilder
       val stderr = new StringBuilder
+
       val cmdPre = Seq(ansible,
         "-i", inventory.toString(),
         "-e", request.body.toString(),
@@ -70,7 +75,6 @@ object Application extends Controller {
         "refId" → JsString(refId),
         "command" → JsString(cmd)
       )).toString)
-      val gitPull = Seq()
       val start = DateTime.now().getMillis
       val code = cmd ! ProcessLogger(appendLine(stdout, _), appendLine(stderr, _))
       val execTime = s"PT${(DateTime.now.getMillis - start + 500) / 1000}S"
@@ -88,11 +92,12 @@ object Application extends Controller {
       }
 
       if (code == 0) {
-        Logger.trace(resultString("success", Some(JsString(stdout.toString))))
-        Logger.info(resultString("success", None))
-        Some(Ok(Json.parse(resultString("success", None))))
-      }
-      else {
+        gitTag() orElse {
+          Logger.trace(resultString("success", Some(JsString(stdout.toString))))
+          Logger.info(resultString("success", None))
+          Some(Ok(Json.parse(resultString("success", None))))
+        }
+      } else {
         val message = JsObject(Seq(
           "stdout" → JsString(stdout.toString()),
           "stderr" → JsString(stderr.toString())
@@ -103,7 +108,6 @@ object Application extends Controller {
     }
     result.get
   }
-
 
   def ping = Action {
     Ok(Json.obj(
@@ -137,6 +141,16 @@ object Application extends Controller {
     stream.write(vaultPassword.getBytes)
     stream.close()
     passwordFile.getCanonicalPath
+  }
+
+  private def gitPull(): Option[Result] = {
+    Logger.debug(s"Git pull on $dir not implemented")
+    None
+  }
+
+  private def gitTag(): Option[Result] = {
+    Logger.debug(s"Git tag on $dir not implemented")
+    None
   }
 
 }

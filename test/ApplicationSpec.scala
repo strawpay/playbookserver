@@ -28,7 +28,7 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
     }
 
     "send 404 on a non existing playbook" in {
-      val result = route(FakeRequest(GET, "/inventory/not-a-file")).get
+      val result = route(FakeRequest(GET, "/dev/not-a-file")).get
       status(result) must be(NOT_FOUND)
     }
 
@@ -48,6 +48,24 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
       val refId = "4711"
       val  result = post(refId)
       verifySuccess(result, refId)
+    }
+
+    "map develop to dev" in {
+      val refId = "4711"
+      val  result = post(refId, "develop")
+      verifySuccess(result, refId, "dev")
+    }
+
+    "map master to stage" in {
+      val refId = "4711"
+      val  result = post(refId, "master")
+      verifySuccess(result, refId, "stage")
+    }
+
+    "map unknown to dev" in {
+      val refId = "4711"
+      val  result = post(refId, "unknown")
+      verifySuccess(result, refId, "dev")
     }
 
     "build with \" are escaped" in {
@@ -78,18 +96,19 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
   }
 
   def post()(implicit extraVars:JsValue): Future[Result] = {
-    route(FakeRequest(POST, s"/inventory/play.yaml", FakeHeaders(), extraVars)).get
+    route(FakeRequest(POST, s"/dev/play.yaml", FakeHeaders(), extraVars)).get
   }
 
-  def post(refId: String)(implicit extraVars:JsValue): Future[Result] = {
-    route(FakeRequest(POST, s"/inventory/play.yaml?refId=$refId", FakeHeaders(), extraVars)).get
+  def post(refId: String, inventory:String = "dev")(implicit extraVars:JsValue): Future[Result] = {
+    route(FakeRequest(POST, s"/$inventory/play.yaml?refId=$refId", FakeHeaders(), extraVars)).get
   }
 
-  def verifySuccess(result: Future[Result], refId: String): Unit = {
+  def verifySuccess(result: Future[Result], refId: String, inventory:String = "dev"): Unit = {
     status(result) must be(OK)
     contentType(result) must be(Some("application/json"))
     val js = Json.parse(contentAsString(result)) \ "result"
     (js \ "buildId").as[String].toLong > 0
+    (js \ "inventory").as[String] must be(inventory)
     (js \ "refId").as[String] must startWith (refId)
     (js \ "status").as[String] must be("success")
     (js \ "execTime").as[String] must be("PT0S")
