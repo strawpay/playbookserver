@@ -71,7 +71,7 @@ if [ $ping ]; then
 elif [ $# -ne 2 -o -z "$version" ]; then
     usage;
 else
-    play=$2.yaml
+    play=$2
     path=$1/$play$refId
     method="-X POST"
     headers="-H Content-Type:application/json"

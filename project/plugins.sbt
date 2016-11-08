@@ -8,7 +8,7 @@ addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.4.4")
 addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.0.5")
 
 // git
-addSbtPlugin("com.typesafe.sbt" % "sbt-git" % "0.8.4")
+addSbtPlugin("com.typesafe.sbt" % "sbt-git" % "0.8.5")
 
 // Build info
 addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.6.1")

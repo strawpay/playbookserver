@@ -3,13 +3,13 @@ package controllers
 import java.io.{File, FileOutputStream}
 
 import akka.ConfigurationException
-import buildinfo.BuildInfo
-import org.joda.time.{DateTimeZone, DateTime}
+import org.joda.time.{DateTime, DateTimeZone}
 import play.api.Play.current
 import play.api._
 import play.api.libs.json.{JsObject, JsString, JsValue, Json}
 import play.api.mvc._
 import play.api.Logger
+import buildinfo.BuildInfo
 
 import scala.reflect.io.{Directory, Path}
 import scala.sys.process._
@@ -17,8 +17,8 @@ import scala.util.Random
 
 object Application extends Controller {
 
-  val dir = Directory(Play.configuration.getString("ansible.playbooks").get)
-  if (!dir.isDirectory) throw new ConfigurationException(s"$dir is not a directory")
+  val playbooks = Directory(Play.configuration.getString("ansible.playbooks").get)
+  if (!playbooks.isDirectory) throw new ConfigurationException(s"$playbooks is not a directory")
   val ansible = Play.configuration.getString("ansible.command").get
   val vaultPassword = Play.configuration.getString("ansible.vault_password").get
   val verbose = Play.configuration.getBoolean("ansible.verbose").getOrElse(false)
@@ -30,14 +30,69 @@ object Application extends Controller {
   private val defaultInventory = Play.configuration.getString("defaultInventory").get
 
   def index = Action {
-    Ok(views.html.index(dir, ansible, ansibleVersion, startedAt))
+    Ok(views.html.index(playbooks, ansible, ansibleVersion, startedAt))
   }
 
-  def play(branch: String, playbookName: String): Action[JsValue] = Action(parse.json) { request =>
 
+  def play(branch: String, playbookName: String): Action[JsValue] = Action(parse.json) { request =>
+    val start = DateTime.now().getMillis
     val buildId = Math.abs(random.nextInt).toString
     val refId = escapeJson(request.getQueryString("refId").getOrElse(""))
     val inventoryName = inventoryMap.getString(branch).getOrElse(defaultInventory)
+    val inventory = playbooks / inventoryName
+    val playbook = playbooks / playbookName + ".yaml"
+    val stdout = new StringBuilder
+    val stderr = new StringBuilder
+    val versionJson = request.body
+    val version = (versionJson \ "version").as[String]
+    def execTime: String = s"PT${(DateTime.now.getMillis - start + 500) / 1000}S"
+
+    def reportFailure(): Option[Result] = {
+      val message = JsObject(Seq(
+        "stdout" → JsString(stdout.toString()),
+        "stderr" → JsString(stderr.toString())
+      ))
+      Logger.warn(resultString("failed", Some(message)))
+      Some(ServiceUnavailable(Json.parse(resultString("failed", Some(message)))))
+    }
+
+    def resultString(status: String, message: Option[JsValue]): String = {
+      JsObject(Seq(
+        "result" → JsObject(Seq(
+          "buildId" → JsString(buildId),
+          "refId" -> JsString(refId),
+          "inventory" → JsString(inventoryName),
+          "playbook" → JsString(playbookName),
+          "status" → JsString(status),
+          "execTime" → JsString(execTime),
+          "message" → Json.toJson(message)
+        )))).toString
+    }
+
+    def checkPath(file: Path, hint: String): Option[Result] = {
+      if (file.exists) {
+        None
+      } else {
+        val message = s"buildId:$buildId refId:$refId File not found: $hint file: $file"
+        Logger.warn(message)
+        Some(NotFound(message))
+      }
+    }
+
+    def appendLine(builder: StringBuilder, line: String): Unit = {
+      builder.append(s"$line\n")
+    }
+
+
+    def git(operation: Seq[String]): Option[Result] = {
+      val cmd = Seq("git", "-C", playbooks.toString) ++ operation
+      cmd ! ProcessLogger(appendLine(stdout, _), appendLine(stderr, _)) match {
+        case 0 =>
+          Logger.debug(s"$cmd ok")
+          None
+        case _ => reportFailure()
+      }
+    }
 
     Logger.info(
       JsObject(Seq(
@@ -50,19 +105,14 @@ object Application extends Controller {
         )))).toString()
     )
 
-    val inventory = dir / inventoryName
-    val playbook = dir / playbookName
-
-    val result = checkPath(inventory, "inventory", buildId, refId) orElse {
-      checkPath(playbook, "playbook", buildId, refId)
-    } orElse gitPull() orElse {
+    (checkPath(inventory, "inventory") orElse {
+      checkPath(playbook, "playbook")
+    } orElse git(Seq("pull")) orElse {
       // Run ansible
-      val stdout = new StringBuilder
-      val stderr = new StringBuilder
 
       val cmdPre = Seq(ansible,
         "-i", inventory.toString(),
-        "-e", request.body.toString(),
+        "-e", versionJson,
         "--vault-password-file", passwordFile,
         playbook.toString())
       val cmd = if (verbose) {
@@ -75,67 +125,29 @@ object Application extends Controller {
         "refId" → JsString(refId),
         "command" → JsString(cmd)
       )).toString)
-      val start = DateTime.now().getMillis
       val code = cmd ! ProcessLogger(appendLine(stdout, _), appendLine(stderr, _))
-      val execTime = s"PT${(DateTime.now.getMillis - start + 500) / 1000}S"
-      def resultString(status: String, message: Option[JsValue]): String = {
-        JsObject(Seq(
-          "result" → JsObject(Seq(
-            "buildId" → JsString(buildId),
-            "refId" -> JsString(refId),
-            "inventory" → JsString(inventoryName),
-            "playbook" → JsString(playbookName),
-            "status" → JsString(status),
-            "execTime" → JsString(execTime),
-            "message" → Json.toJson(message)
-          )))).toString
-      }
 
       if (code == 0) {
-        gitTag() orElse {
-          Logger.trace(resultString("success", Some(JsString(stdout.toString))))
-          Logger.info(resultString("success", None))
-          Some(Ok(Json.parse(resultString("success", None))))
+        git(Seq("tag", "-f", s"${inventoryName}_$playbookName-${version}")) orElse {
+          git(Seq("tag", "-f", s"build_${buildId}"))
+        } orElse {
+          if (refId.isEmpty) None else git(Seq("tag", "-f", s"ref_$refId"))
+        } orElse {
+          git(Seq("push", "--tags")) orElse {
+            Logger.trace(resultString("success", Some(JsString(stdout.toString))))
+            Logger.info(resultString("success", None))
+            Some(Ok(Json.parse(resultString("success", None))))
+          }
         }
       } else {
-        val message = JsObject(Seq(
-          "stdout" → JsString(stdout.toString()),
-          "stderr" → JsString(stderr.toString())
-        ))
-        Logger.warn(resultString("failed", Some(message)))
-        Some(ServiceUnavailable(Json.parse(resultString("failed", Some(message)))))
+        reportFailure()
       }
-    }
-    result.get
+    }).get
   }
 
-  def ping = Action {
-    Ok(Json.obj(
-      "name" -> JsString(BuildInfo.name),
-      "version" -> JsString(BuildInfo.version)
-    )).withHeaders(CACHE_CONTROL -> "no-cache")
-  }
 
-  private def escapeJson(input: String): String = {
-    input.replace("\"", "^").replace("\'", "^").replace("\\", "/").replace("\n", "\\n")
-  }
-
-  private def checkPath(file: Path, hint: String, buildId: String, refId: String): Option[Result] = {
-    if (file.exists) {
-      None
-    } else {
-      val message = s"buildId:$buildId refId:$refId File not found: $hint file: $file"
-      Logger.warn(message)
-      Some(NotFound(message))
-    }
-  }
-
-  private def appendLine(builder: StringBuilder, line: String): Unit = {
-    builder.append(s"$line\n")
-  }
-
-  private def createTempVaultPassFile(): String = {
-    val passwordFile = File.createTempFile("rocannon-", "tmp")
+  def createTempVaultPassFile(): String = {
+    val passwordFile = File.createTempFile("rocannon-", ".tmp")
     passwordFile.deleteOnExit()
     val stream = new FileOutputStream(passwordFile)
     stream.write(vaultPassword.getBytes)
@@ -143,14 +155,16 @@ object Application extends Controller {
     passwordFile.getCanonicalPath
   }
 
-  private def gitPull(): Option[Result] = {
-    Logger.debug(s"Git pull on $dir not implemented")
-    None
+
+  def escapeJson(input: String): String = {
+    input.replace("\"", "^").replace("\'", "^").replace("\\", "/").replace("\n", "\\n")
   }
 
-  private def gitTag(): Option[Result] = {
-    Logger.debug(s"Git tag on $dir not implemented")
-    None
+  def ping = Action {
+    Ok(Json.obj(
+      "name" -> JsString(BuildInfo.name),
+      "version" -> JsString(BuildInfo.version)
+    )).withHeaders(CACHE_CONTROL -> "no-cache")
   }
 
 }
