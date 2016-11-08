@@ -5,11 +5,11 @@
 usage() {
 cat <<EOF
 
-$0 [-c cert ] [-a ca-cert ] [-u url]  -p | -f version-file | -v version [ -i refId ] inventory playbook 
+$0 [-c cert ] [-a ca-cert ] [-u url] [-m max-time]  -p | -f version-file | -v version [ -i refId ] inventory playbook 
 
 Where:
-inventory     the inventory, "master" is mapped to stage, develop to dev
-playbook      a playbook without extension .yaml stored in git@bitbucket.org:strawpay/playbooks.git
+inventory/branch   The rocannon server will map branches to the relevant inventory.
+playbook           a playbook without extension .yaml stored in git@bitbucket.org:strawpay/playbooks.git
 
 Option
 
@@ -19,6 +19,7 @@ Option
 -v version          use { "version":"$version"} as version
 -i refId            use refId as refId
 -u url              url to rocannon server, defaults to https://rocannon.internal.strawpay.com  
+-m seconds          maxtime for the operation, default 300 seconds
 -p                  ping, ie. access $url/ping
 
 EOF
@@ -29,8 +30,9 @@ cert=""
 cacert=""
 refId=""
 url=https://rocannon.internal.strawpay.com
+maxtime=300
 
-while getopts "a:c:f:i:v:u:p" opt; do
+while getopts "a:c:f:i:m:pu:v:" opt; do
     case $opt in
 	a)
 	    cacert="--cacert $OPTARG"
@@ -41,17 +43,20 @@ while getopts "a:c:f:i:v:u:p" opt; do
 	f)
 	    version="-d @$OPTARG"
 	    ;;
-	v)
-	    version="-d {\"version\":\"$OPTARG\"}"
-	    ;;
 	i)
 	    refId="?refId=$OPTARG"
+	    ;;
+	m)
+	    maxtime=$OPTARG
+	    ;;
+	p)
+	    ping=true
 	    ;;
 	u)
 	    url=$OPTARG
 	    ;;
-	p)
-	    ping=true
+	v)
+	    version="-d {\"version\":\"$OPTARG\"}"
 	    ;;
 	*)
 	    echo "Unknown option $OPTARG"
@@ -72,4 +77,4 @@ else
     headers="-H Content-Type:application/json"
 fi
 
-curl -s -S  -f $method $headers $cacert $cert $version $url/$path
+curl -s -S  -m $maxtime -f $method $headers $cacert $cert $version $url/$path
