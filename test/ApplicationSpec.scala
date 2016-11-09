@@ -47,70 +47,70 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
     "run a playbook with success" in {
       val refId = "4711"
       val  result = post(refId)
-      verifySuccess(result, refId)
+      verifyResponse(result, refId)
     }
 
     "map develop to dev" in {
       val refId = "4711"
       val  result = post(refId, "develop")
-      verifySuccess(result, refId, "dev")
+      verifyResponse(result, refId, "dev")
     }
 
     "map master to stage" in {
       val refId = "4711"
       val  result = post(refId, "master")
-      verifySuccess(result, refId, "stage")
+      verifyResponse(result, refId, "stage")
     }
 
     "map unknown to dev" in {
       val refId = "4711"
       val  result = post(refId, "unknown")
-      verifySuccess(result, refId, "dev")
+      verifyResponse(result, refId, "dev")
     }
 
     "build with \" are escaped" in {
       val refId = """ evil\" ' \'"""
       val refEscaped = " evil/^ ^ /^"
       val result = post(refId)
-      verifySuccess(result, refEscaped)
+      verifyResponse(result, refEscaped, statusCode = BAD_REQUEST, expectedResult = "failed")
     }
 
-    "report error if the playbook fails" in {
+    "report error when no version is given" in {
       val refId = "17"
       val result = post(refId)(Json.parse( """{"failure": "true" }"""))
-      status(result) must be(SERVICE_UNAVAILABLE)
+      status(result) must be(BAD_REQUEST)
       contentType(result) must be(Some("application/json"))
       val js = contentAsJson(result) \ "result"
       (js \ "buildId").as[String].toLong > 0
       (js \ "refId").as[String] must startWith (refId)
       (js \ "status").as[String] must be("failed")
-      (js \ "execTime").as[String] must be("PT0S")
-      (js \ "message" \ "stderr").as[String] must be ("")
+      (js \ "execTime").as[String] must fullyMatch regex ("""PT\d+S""")
+      (js \ "message").as[String] mustBe "must give version"
     }
 
     "report empty refId in response if refId query parameter is empty" in {
       val result = post()
-      verifySuccess(result, "")
+      verifyResponse(result, "")
     }
 
   }
 
   def post()(implicit extraVars:JsValue): Future[Result] = {
-    route(FakeRequest(POST, s"/dev/play.yaml", FakeHeaders(), extraVars)).get
+    route(FakeRequest(POST, s"/dev/play", FakeHeaders(), extraVars)).get
   }
 
   def post(refId: String, inventory:String = "dev")(implicit extraVars:JsValue): Future[Result] = {
-    route(FakeRequest(POST, s"/$inventory/play.yaml?refId=$refId", FakeHeaders(), extraVars)).get
+    route(FakeRequest(POST, s"/$inventory/play?refId=$refId", FakeHeaders(), extraVars)).get
   }
 
-  def verifySuccess(result: Future[Result], refId: String, inventory:String = "dev"): Unit = {
-    status(result) must be(OK)
+  def verifyResponse(result: Future[Result], refId: String, inventory: String = "dev", statusCode: Port = OK, expectedResult: String = "success"): Unit = {
+    status(result) must be(statusCode)
     contentType(result) must be(Some("application/json"))
     val js = Json.parse(contentAsString(result)) \ "result"
     (js \ "buildId").as[String].toLong > 0
     (js \ "inventory").as[String] must be(inventory)
     (js \ "refId").as[String] must startWith (refId)
-    (js \ "status").as[String] must be("success")
-    (js \ "execTime").as[String] must be("PT0S")
+    (js \ "status").as[String] must be(expectedResult)
+    (js \ "execTime").as[String] must fullyMatch regex """PT\d+S"""
   }
 }

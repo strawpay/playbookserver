@@ -29,10 +29,13 @@ object Application extends Controller {
   val inventoryMap = Play.configuration.getConfig("inventoryMap").get
   private val defaultInventory = Play.configuration.getString("defaultInventory").get
 
+  case class Version(version: String)
+
+  implicit val versionFormat = Json.format[Version]
+
   def index = Action {
     Ok(views.html.index(playbooks, ansible, ansibleVersion, startedAt))
   }
-
 
   def play(branch: String, playbookName: String): Action[JsValue] = Action(parse.json) { request =>
     val start = DateTime.now().getMillis
@@ -41,34 +44,38 @@ object Application extends Controller {
     val inventoryName = inventoryMap.getString(branch).getOrElse(defaultInventory)
     val inventory = playbooks / inventoryName
     val playbook = playbooks / playbookName + ".yaml"
-    val stdout = new StringBuilder
-    val stderr = new StringBuilder
+
     val versionJson = request.body
-    val version = (versionJson \ "version").as[String]
+
+    def resultJson(status: Boolean, message: Option[JsValue]): JsValue = {
+      val json = JsObject(Seq(
+        "buildId" → JsString(buildId),
+        "refId" -> JsString(refId),
+        "inventory" → JsString(inventoryName),
+        "playbook" → JsString(playbookName),
+        "status" → JsString(if (status) "success" else "failed"),
+        "execTime" → JsString(execTime)
+      ))
+      val result = message match {
+        case Some(m) => json + ("message" → message.get)
+        case None => json
+      }
+      JsObject(Seq("result" → result))
+    }
+
     def execTime: String = s"PT${(DateTime.now.getMillis - start + 500) / 1000}S"
 
-    def reportFailure(): Option[Result] = {
-      val message = JsObject(Seq(
-        "stdout" → JsString(stdout.toString()),
-        "stderr" → JsString(stderr.toString())
-      ))
-      Logger.warn(resultString("failed", Some(message)))
-      Some(ServiceUnavailable(Json.parse(resultString("failed", Some(message)))))
+    def reportBadRequest(message: JsValue): Option[Result] = {
+      val json = resultJson(false, Some(message))
+      Logger.warn(json.toString)
+      Some(BadRequest(json))
     }
 
-    def resultString(status: String, message: Option[JsValue]): String = {
-      JsObject(Seq(
-        "result" → JsObject(Seq(
-          "buildId" → JsString(buildId),
-          "refId" -> JsString(refId),
-          "inventory" → JsString(inventoryName),
-          "playbook" → JsString(playbookName),
-          "status" → JsString(status),
-          "execTime" → JsString(execTime),
-          "message" → Json.toJson(message)
-        )))).toString
+    def reportServiceUnavailable(message: JsObject): Option[Result] = {
+      val json = resultJson(false, Some(message))
+      Logger.warn(json.toString)
+      Some(ServiceUnavailable(json))
     }
-
     def checkPath(file: Path, hint: String): Option[Result] = {
       if (file.exists) {
         None
@@ -83,15 +90,32 @@ object Application extends Controller {
       builder.append(s"$line\n")
     }
 
-
     def git(operation: Seq[String]): Option[Result] = {
       val cmd = Seq("git", "-C", playbooks.toString) ++ operation
-      cmd ! ProcessLogger(appendLine(stdout, _), appendLine(stderr, _)) match {
-        case 0 =>
-          Logger.debug(s"$cmd ok")
+      runCommand(cmd) match {
+        case (0, _) =>
           None
-        case _ => reportFailure()
+        case (code, message) =>
+          if (message.toString() contains "is not a valid tag name")
+            reportBadRequest(message)
+          else
+            reportServiceUnavailable(message)
       }
+    }
+
+    def runCommand(cmd: Seq[String]) = {
+      val stdout = new StringBuilder
+      val stderr = new StringBuilder
+      val code = cmd ! ProcessLogger(appendLine(stdout, _), appendLine(stderr, _))
+      val message = JsObject(Seq(
+        "stdout" → JsString(stdout.toString()),
+        "stderr" → JsString(stderr.toString())
+      ))
+      if (code == 0)
+        Logger.debug(s"""CmdExecution=ok, code=0, cmd="${cmd.mkString(" ")}"""")
+      else
+        Logger.warn(s"""CmdExecution=failed code=$code, message="$message", cmd=${cmd.mkString(" ")}"""")
+      (code, message)
     }
 
     Logger.info(
@@ -109,38 +133,41 @@ object Application extends Controller {
       checkPath(playbook, "playbook")
     } orElse git(Seq("pull")) orElse {
       // Run ansible
-
       val cmdPre = Seq(ansible,
         "-i", inventory.toString(),
-        "-e", versionJson,
+        "-e", versionJson.toString(),
         "--vault-password-file", passwordFile,
         playbook.toString())
       val cmd = if (verbose) {
-        (cmdPre :+ "-v").mkString(" ")
+        (cmdPre :+ "-v")
       } else {
-        cmdPre.mkString(" ")
+        cmdPre
       }
       Logger.debug(JsObject(Seq(
         "buildId" → JsString(buildId),
         "refId" → JsString(refId),
-        "command" → JsString(cmd)
+        "command" → JsString(cmd.mkString(" "))
       )).toString)
-      val code = cmd ! ProcessLogger(appendLine(stdout, _), appendLine(stderr, _))
-
-      if (code == 0) {
-        git(Seq("tag", "-f", s"${inventoryName}_$playbookName-${version}")) orElse {
-          git(Seq("tag", "-f", s"build_${buildId}"))
-        } orElse {
-          if (refId.isEmpty) None else git(Seq("tag", "-f", s"ref_$refId"))
-        } orElse {
-          git(Seq("push", "--tags")) orElse {
-            Logger.trace(resultString("success", Some(JsString(stdout.toString))))
-            Logger.info(resultString("success", None))
-            Some(Ok(Json.parse(resultString("success", None))))
+      versionJson.asOpt[Version] match {
+        case Some(Version(version)) =>
+          runCommand(cmd) match {
+            case (0, message) =>
+              git(Seq("tag", "-f", s"${inventoryName}_$playbookName-${version}")) orElse {
+                git(Seq("tag", "-f", s"build_${buildId}"))
+              } orElse {
+                if (refId.isEmpty) None else git(Seq("tag", "-f", s"ref_$refId"))
+              } orElse {
+                git(Seq("push", "--tags")) orElse {
+                  Logger.trace(resultJson(true, Some(JsString(stdout.toString))).toString())
+                  val json = resultJson(true, None)
+                  Logger.info(json.toString())
+                  Some(Ok(json))
+                }
+              }
+            case (_, message) =>
+              reportServiceUnavailable(message)
           }
-        }
-      } else {
-        reportFailure()
+        case _ => reportBadRequest(JsString("must give version"))
       }
     }).get
   }
