@@ -8,6 +8,13 @@ cache:
 services:
   - docker
 
+branches:
+  only:
+    - master
+    - develop
+    - /^release\/.*/
+    - /^feature\\/.*/
+    
 language: scala
 
 scala:
