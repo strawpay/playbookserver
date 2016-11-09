@@ -140,12 +140,12 @@ object Application extends Controller {
     } orElse gitPull orElse {
       // Run ansible
       val cmdPre = Seq(ansible,
-        "-i", inventory.toString,
+        "-i", inventory.getOrElse("N/A").toString,
         "-e", versionJson.toString,
         "--vault-password-file", passwordFile,
-        playbook.toString)
+        playbook.getOrElse("N/A").toString)
       val cmd = if (verbose) {
-        cmdPre :+ "-v"
+        (cmdPre :+ "-v")
       } else {
         cmdPre
       }
