@@ -117,6 +117,8 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
     (js \ "inventory").as[String] must be(inventory)
     (js \ "refId").as[String] must startWith(refId)
     (js \ "status").as[String] must be(expectedResult)
+    (js \ "version").as[String] must be("1.0")
+    (js \ "playbook").as[String] must be("play")
     (js \ "execTime").as[String] must fullyMatch regex """PT\d+S"""
   }
 }

@@ -48,6 +48,7 @@ object Application extends Controller {
     val inventory = inventoryName map (playbooks / _)
     val playbook = playbookName map (n => playbooks / (n + ".yaml"))
     val versionJson = request.body
+    val version = (versionJson.asOpt[Version] map (_.version))
 
     def resultJson(status: Boolean, message: Option[JsValue]): JsValue = {
       val json = JsObject(Seq(
@@ -55,6 +56,7 @@ object Application extends Controller {
         "refId" -> JsString(refId),
         "inventory" → JsString(inventoryName.getOrElse("N/A")),
         "playbook" → JsString(playbookName.getOrElse("N/A")),
+        "version" -> JsString(version.getOrElse("N/A")),
         "status" → JsString(if (status) "success" else "failed"),
         "execTime" → JsString(execTime)
       ))
@@ -131,6 +133,7 @@ object Application extends Controller {
           "refId" → JsString(refId),
           "inventory" → JsString(inventoryName.getOrElse("N/A")),
           "playbook" → JsString(playbookName.getOrElse("N/A")),
+          "version" -> JsString(version.getOrElse("N/A")),
           "remoteAddress" → JsString(request.remoteAddress)
         )))).toString()
     )
@@ -154,8 +157,8 @@ object Application extends Controller {
         "refId" → JsString(refId),
         "command" → JsString(cmd.mkString(" "))
       )).toString)
-      versionJson.asOpt[Version] match {
-        case Some(Version(version)) =>
+      version match {
+        case Some(v) =>
           runCommand(cmd) match {
             case (0, message) =>
               Logger.trace(resultJson(status = true, message = Some(JsString(stdout.toString))).toString)
