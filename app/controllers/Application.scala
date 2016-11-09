@@ -157,7 +157,7 @@ object Application extends Controller {
               } orElse {
                 if (refId.isEmpty) None else git(Seq("tag", "-f", s"ref_$refId"))
               } orElse {
-                git(Seq("push", "--tags")) orElse {
+                git(Seq("push", "-f", "--tags")) orElse {
                   Logger.trace(resultJson(true, Some(JsString(stdout.toString))).toString())
                   val json = resultJson(true, None)
                   Logger.info(json.toString())
