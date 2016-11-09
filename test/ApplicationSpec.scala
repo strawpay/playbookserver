@@ -72,7 +72,7 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
       val refId = """ evil\" ' \'"""
       val refEscaped = " evil/^ ^ /^"
       val result = post(refId)
-      verifyResponse(result, refEscaped, statusCode = BAD_REQUEST, expectedResult = "failed")
+      verifyResponse(result, refEscaped)
     }
 
     "report error when no version is given" in {

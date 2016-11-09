@@ -152,16 +152,10 @@ object Application extends Controller {
         case Some(Version(version)) =>
           runCommand(cmd) match {
             case (0, message) =>
-              git(Seq("tag", "-f", s"${inventoryName}_$playbookName-${version}"))  orElse {
-                if (refId.isEmpty) None else git(Seq("tag", "-f", s"ref_$refId"))
-              } orElse {
-                git(Seq("push", "-f", "--tags")) orElse {
-                  Logger.trace(resultJson(true, Some(JsString(stdout.toString))).toString())
-                  val json = resultJson(true, None)
-                  Logger.info(json.toString())
-                  Some(Ok(json))
-                }
-              }
+              Logger.trace(resultJson(true, Some(JsString(stdout.toString))).toString())
+              val json = resultJson(true, None)
+              Logger.info(json.toString())
+              Some(Ok(json))
             case (_, message) =>
               reportServiceUnavailable(message)
           }
