@@ -95,7 +95,7 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
 
     "report error when playbook not set" in {
       val result = route(FakeRequest(POST, s"/play?inventory=dev", FakeHeaders(), extraVars)).get
-      verifyResponse(result, "", statusCode = BAD_REQUEST, expectedResult = "failed")
+      verifyResponse(result, "", statusCode = BAD_REQUEST, expectedResult = "failed", playbook = "N/A")
     }
 
     "report empty refId in response if refId query parameter is empty" in {
@@ -109,7 +109,7 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
     route(FakeRequest(POST, s"/play?inventory=$inventory&playbook=play&refId=$refId", FakeHeaders(), extraVars)).get
   }
 
-  def verifyResponse(result: Future[Result], refId: String, inventory: String = "dev", statusCode: Port = OK, expectedResult: String = "success"): Unit = {
+  def verifyResponse(result: Future[Result], refId: String, inventory: String = "dev", statusCode: Port = OK, expectedResult: String = "success", playbook:String = "play"): Unit = {
     status(result) must be(statusCode)
     contentType(result) must be(Some("application/json"))
     val js = Json.parse(contentAsString(result)) \ "result"
@@ -118,7 +118,7 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
     (js \ "refId").as[String] must startWith(refId)
     (js \ "status").as[String] must be(expectedResult)
     (js \ "version").as[String] must be("1.0")
-    (js \ "playbook").as[String] must be("play")
+    (js \ "playbook").as[String] must be(playbook)
     (js \ "execTime").as[String] must fullyMatch regex """PT\d+S"""
   }
 }
