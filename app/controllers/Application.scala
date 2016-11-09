@@ -37,22 +37,24 @@ object Application extends Controller {
     Ok(views.html.index(playbooks, ansible, ansibleVersion, startedAt))
   }
 
-  def play(branch: String, playbookName: String): Action[JsValue] = Action(parse.json) { request =>
-    val start = DateTime.now().getMillis
+  def play: Action[JsValue] = Action(parse.json) { request =>
     val buildId = Math.abs(random.nextInt).toString
     val refId = escapeJson(request.getQueryString("refId").getOrElse(""))
-    val inventoryName = inventoryMap.getString(branch).getOrElse(defaultInventory)
-    val inventory = playbooks / inventoryName
-    val playbook = playbooks / playbookName + ".yaml"
-
+    val branch = request.getQueryString("inventory")
+    val jsValue: JsValue = Json.parse("""{"message":"must give playbook"}""")
+    val playbookName = request.getQueryString("playbook")
+    val inventoryName = branch map (inventoryMap.getString(_).getOrElse(defaultInventory))
+    val start = DateTime.now().getMillis
+    val inventory = inventoryName map (playbooks / _)
+    val playbook = playbookName map (n => playbooks / (n + ".yaml"))
     val versionJson = request.body
 
     def resultJson(status: Boolean, message: Option[JsValue]): JsValue = {
       val json = JsObject(Seq(
         "buildId" → JsString(buildId),
         "refId" -> JsString(refId),
-        "inventory" → JsString(inventoryName),
-        "playbook" → JsString(playbookName),
+        "inventory" → JsString(inventoryName.getOrElse("N/A")),
+        "playbook" → JsString(playbookName.getOrElse("N/A")),
         "status" → JsString(if (status) "success" else "failed"),
         "execTime" → JsString(execTime)
       ))
@@ -66,23 +68,30 @@ object Application extends Controller {
     def execTime: String = s"PT${(DateTime.now.getMillis - start + 500) / 1000}S"
 
     def reportBadRequest(message: JsValue): Option[Result] = {
-      val json = resultJson(false, Some(message))
+      val json = resultJson(status = false, message = Some(message))
       Logger.warn(json.toString)
       Some(BadRequest(json))
     }
 
     def reportServiceUnavailable(message: JsObject): Option[Result] = {
-      val json = resultJson(false, Some(message))
+      val json = resultJson(status = false, message = Some(message))
       Logger.warn(json.toString)
       Some(ServiceUnavailable(json))
     }
-    def checkPath(file: Path, hint: String): Option[Result] = {
-      if (file.exists) {
-        None
-      } else {
-        val message = s"buildId:$buildId refId:$refId File not found: $hint file: $file"
-        Logger.warn(message)
-        Some(NotFound(message))
+    def checkPath(file: Option[Path], hint: String): Option[Result] = {
+      file match {
+        case Some(f) =>
+          if (f.exists) {
+            None
+          } else {
+            val json = resultJson(status = false, message = Some(JsString(s"File not found: $hint file: $f")))
+            Logger.warn(json.toString())
+            Some(NotFound(json))
+          }
+        case None =>
+          val json = resultJson(status = false, message = Some(JsString(s"$hint not set")))
+          Logger.warn(json.toString)
+          Some(BadRequest(json))
       }
     }
 
@@ -90,16 +99,13 @@ object Application extends Controller {
       builder.append(s"$line\n")
     }
 
-    def git(operation: Seq[String]): Option[Result] = {
-      val cmd = Seq("git", "-C", playbooks.toString) ++ operation
+    def gitPull: Option[Result] = {
+      val cmd = Seq("git", "-C", playbooks.toString, "pull")
       runCommand(cmd) match {
         case (0, _) =>
           None
         case (code, message) =>
-          if (message.toString() contains "is not a valid tag name")
-            reportBadRequest(message)
-          else
-            reportServiceUnavailable(message)
+          reportServiceUnavailable(message)
       }
     }
 
@@ -114,7 +120,7 @@ object Application extends Controller {
       if (code == 0)
         Logger.debug(s"""CmdExecution=ok, code=0, cmd="${cmd.mkString(" ")}"""")
       else
-        Logger.warn(s"""CmdExecution=failed code=$code, message="$message", cmd=${cmd.mkString(" ")}"""")
+        Logger.warn(s"""CmdExecution=failed code=$code, cmd="${cmd.mkString(" ")}", message="$message"""")
       (code, message)
     }
 
@@ -123,23 +129,23 @@ object Application extends Controller {
         "request" → JsObject(Seq(
           "buildId" → JsString(buildId),
           "refId" → JsString(refId),
-          "inventory" → JsString(inventoryName),
-          "playbook" → JsString(playbookName),
+          "inventory" → JsString(inventoryName.getOrElse("N/A")),
+          "playbook" → JsString(playbookName.getOrElse("N/A")),
           "remoteAddress" → JsString(request.remoteAddress)
         )))).toString()
     )
 
     (checkPath(inventory, "inventory") orElse {
       checkPath(playbook, "playbook")
-    } orElse git(Seq("pull")) orElse {
+    } orElse gitPull orElse {
       // Run ansible
       val cmdPre = Seq(ansible,
-        "-i", inventory.toString(),
-        "-e", versionJson.toString(),
+        "-i", inventory.toString,
+        "-e", versionJson.toString,
         "--vault-password-file", passwordFile,
-        playbook.toString())
+        playbook.toString)
       val cmd = if (verbose) {
-        (cmdPre :+ "-v")
+        cmdPre :+ "-v"
       } else {
         cmdPre
       }
@@ -152,9 +158,9 @@ object Application extends Controller {
         case Some(Version(version)) =>
           runCommand(cmd) match {
             case (0, message) =>
-              Logger.trace(resultJson(true, Some(JsString(stdout.toString))).toString())
-              val json = resultJson(true, None)
-              Logger.info(json.toString())
+              Logger.trace(resultJson(status = true, message = Some(JsString(stdout.toString))).toString)
+              val json = resultJson(status = true, message = None)
+              Logger.info(json.toString)
               Some(Ok(json))
             case (_, message) =>
               reportServiceUnavailable(message)
@@ -164,7 +170,6 @@ object Application extends Controller {
     }).get
   }
 
-
   def createTempVaultPassFile(): String = {
     val passwordFile = File.createTempFile("rocannon-", ".tmp")
     passwordFile.deleteOnExit()
@@ -173,7 +178,6 @@ object Application extends Controller {
     stream.close()
     passwordFile.getCanonicalPath
   }
-
 
   def escapeJson(input: String): String = {
     input.replace("\"", "^").replace("\'", "^").replace("\\", "/").replace("\n", "\\n")

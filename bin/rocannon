@@ -44,7 +44,7 @@ while getopts "a:c:f:i:m:pu:v:" opt; do
 	    version="-d @$OPTARG"
 	    ;;
 	i)
-	    refId="?refId=$OPTARG"
+	    refId="&refId=$OPTARG"
 	    ;;
 	m)
 	    maxtime=$OPTARG
@@ -71,8 +71,7 @@ if [ $ping ]; then
 elif [ $# -ne 2 -o -z "$version" ]; then
     usage;
 else
-    play=$2
-    path=$1/$play$refId
+    path="play?inventory=$1&playbook=$2$refId"
     method="-X POST"
     headers="-H Content-Type:application/json"
 fi

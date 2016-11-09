@@ -46,25 +46,25 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
 
     "run a playbook with success" in {
       val refId = "4711"
-      val  result = post(refId)
+      val result = post(refId)
       verifyResponse(result, refId)
     }
 
     "map develop to dev" in {
       val refId = "4711"
-      val  result = post(refId, "develop")
+      val result = post(refId, "develop")
       verifyResponse(result, refId, "dev")
     }
 
     "map master to stage" in {
       val refId = "4711"
-      val  result = post(refId, "master")
+      val result = post(refId, "master")
       verifyResponse(result, refId, "stage")
     }
 
     "map unknown to dev" in {
       val refId = "4711"
-      val  result = post(refId, "unknown")
+      val result = post(refId, "unknown")
       verifyResponse(result, refId, "dev")
     }
 
@@ -82,25 +82,31 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
       contentType(result) must be(Some("application/json"))
       val js = contentAsJson(result) \ "result"
       (js \ "buildId").as[String].toLong > 0
-      (js \ "refId").as[String] must startWith (refId)
+      (js \ "refId").as[String] must startWith(refId)
       (js \ "status").as[String] must be("failed")
-      (js \ "execTime").as[String] must fullyMatch regex ("""PT\d+S""")
+      (js \ "execTime").as[String] must fullyMatch regex """PT\d+S"""
       (js \ "message").as[String] mustBe "must give version"
     }
 
+    "report error when inventory not set" in {
+      val result = route(FakeRequest(POST, s"/play?playbook=play", FakeHeaders(), extraVars)).get
+      verifyResponse(result, "", inventory = "N/A", statusCode = BAD_REQUEST, expectedResult = "failed")
+    }
+
+    "report error when playbook not set" in {
+      val result = route(FakeRequest(POST, s"/play?inventory=dev", FakeHeaders(), extraVars)).get
+      verifyResponse(result, "", statusCode = BAD_REQUEST, expectedResult = "failed")
+    }
+
     "report empty refId in response if refId query parameter is empty" in {
-      val result = post()
+      val result = post("", "dev")
       verifyResponse(result, "")
     }
 
   }
 
-  def post()(implicit extraVars:JsValue): Future[Result] = {
-    route(FakeRequest(POST, s"/dev/play", FakeHeaders(), extraVars)).get
-  }
-
-  def post(refId: String, inventory:String = "dev")(implicit extraVars:JsValue): Future[Result] = {
-    route(FakeRequest(POST, s"/$inventory/play?refId=$refId", FakeHeaders(), extraVars)).get
+  def post(refId: String, inventory: String = "dev")(implicit extraVars: JsValue): Future[Result] = {
+    route(FakeRequest(POST, s"/play?inventory=$inventory&playbook=play&refId=$refId", FakeHeaders(), extraVars)).get
   }
 
   def verifyResponse(result: Future[Result], refId: String, inventory: String = "dev", statusCode: Port = OK, expectedResult: String = "success"): Unit = {
@@ -109,7 +115,7 @@ class ApplicationSpec extends PlaySpec with OneAppPerSuite {
     val js = Json.parse(contentAsString(result)) \ "result"
     (js \ "buildId").as[String].toLong > 0
     (js \ "inventory").as[String] must be(inventory)
-    (js \ "refId").as[String] must startWith (refId)
+    (js \ "refId").as[String] must startWith(refId)
     (js \ "status").as[String] must be(expectedResult)
     (js \ "execTime").as[String] must fullyMatch regex """PT\d+S"""
   }
