@@ -29,7 +29,7 @@ maintainer := "Strawpay AB <info@strawpay.com>"
 
 dockerRepository := Some("strawpay-dockerv2-local.jfrog.io")
 
-dockerBaseImage := "strawpay/ansible-java:2.1.1.0-1.8.0_111"
+dockerBaseImage := "strawpay/ansible-java:2.1.2.0-1.8.0_111"
 
 dockerExposedPorts := Seq(9000)
 
